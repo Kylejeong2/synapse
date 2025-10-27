@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 300
+    }
+  }
+}
+
