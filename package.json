@@ -85,9 +85,9 @@
     "web-vitals": "^5.1.0"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": "biome check --write",
+    "src/**/*.{js,jsx,ts,tsx}": "biome check --write --unsafe",
     "index.html": "biome format --write",
-    "vite.config.{js,ts}": "biome check --write",
+    "vite.config.{js,ts}": "biome check --write --unsafe",
     ".vscode/**/*.{json,js,ts}": "biome format --write"
   }
 }
