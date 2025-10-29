@@ -52,7 +52,7 @@ export function ResizableLayout({
 	return (
 		<div
 			ref={containerRef}
-			className="flex h-screen overflow-hidden"
+			className="flex h-full min-h-[inherit] overflow-hidden"
 			style={{ cursor: isDragging ? "col-resize" : "default" }}
 		>
 			{/* Left Panel */}

@@ -91,6 +91,23 @@ export const updatePosition = mutation({
   },
 })
 
+// Update node content after/while streaming
+export const updateContent = mutation({
+  args: {
+    nodeId: v.id('nodes'),
+    assistantResponse: v.string(),
+    tokensUsed: v.number(),
+    model: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.nodeId, {
+      assistantResponse: args.assistantResponse,
+      tokensUsed: args.tokensUsed,
+      model: args.model ?? undefined,
+    })
+  },
+})
+
 // Get the full context chain with cumulative tokens
 export const getContextChain = query({
   args: {

@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
-import { MessageSquare, Plus, Home, Network } from "lucide-react";
+import { MessageSquare, Plus, Home } from "lucide-react";
 import {
 	Sidebar,
 	SidebarContent,
@@ -23,6 +23,7 @@ import {
 } from "@/hooks/useConversation";
 import { useState } from "react";
 import { HeaderUser } from "@/integrations/clerk/header-user";
+import { Doc } from "convex/_generated/dataModel";
 
 export function AppSidebar() {
 	const { user } = useUser();
@@ -99,7 +100,7 @@ export function AppSidebar() {
 					<SidebarGroupContent>
 						<ScrollArea className="h-[calc(100vh-300px)]">
 							<SidebarMenu>
-								{conversations?.map((conversation: any) => (
+								{conversations?.map((conversation: Doc<"conversations">) => (
 									<SidebarMenuItem key={conversation._id}>
 										<SidebarMenuButton
 											asChild

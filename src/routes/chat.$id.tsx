@@ -39,6 +39,27 @@ function ChatPage() {
 		}
 	}, [id, updateLastAccessed]);
 
+    // Default to most recently created node if no fromNode is specified
+    // NOTE: Convex live query-dependent side effect.
+    // Navigates when `conversation.nodes` streams in. Keep as useEffect; not a data fetch.
+    useEffect(() => {
+        if (!conversation?.nodes || conversation.nodes.length === 0) return;
+        if (fromNode) return;
+
+        const latest = conversation.nodes.reduce((a, b) =>
+            a._creationTime > b._creationTime ? a : b,
+        );
+
+        if (latest?._id) {
+            navigate({
+                to: "/chat/$id",
+                params: { id },
+                search: { fromNode: latest._id },
+                replace: true,
+            });
+        }
+    }, [conversation?.nodes, fromNode, id, navigate]);
+
 	if (!conversation) {
 		return (
 			<div className="flex items-center justify-center h-screen">

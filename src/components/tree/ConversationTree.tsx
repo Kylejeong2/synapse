@@ -7,7 +7,7 @@ import {
 	useEdgesState,
 	useNodesState,
 } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import "@xyflow/react/dist/style.css";
 import { useTreeLayout } from "@/hooks/useTreeLayout";
 import { NodeCard } from "./NodeCard";
@@ -35,17 +35,30 @@ export function ConversationTree({
 }: ConversationTreeProps) {
 	const { nodes: layoutNodes, edges: layoutEdges } = useTreeLayout(dbNodes);
 
-	// Add conversationId to node data
-	const nodesWithConvId = layoutNodes.map((node) => ({
-		...node,
-		data: {
-			...node.data,
-			conversationId,
-		},
-	}));
+    // Add conversationId to node data (memoized to avoid infinite updates)
+    const nodesWithConvId = useMemo(() => (
+        layoutNodes.map((node) => ({
+            ...node,
+            data: {
+                ...node.data,
+                conversationId,
+            },
+        }))
+    ), [layoutNodes, conversationId]);
 
-	const [nodes, , onNodesChange] = useNodesState(nodesWithConvId);
-	const [edges, , onEdgesChange] = useEdgesState(layoutEdges);
+const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithConvId);
+const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+
+// UI sync effect reacting to live-updating nodes from props (Convex).
+// Not a data fetch; keep as useEffect to update ReactFlow state.
+useEffect(() => {
+    setNodes(nodesWithConvId);
+}, [nodesWithConvId, setNodes]);
+
+// UI sync for edges; same rationale as above.
+useEffect(() => {
+    setEdges(layoutEdges);
+}, [layoutEdges, setEdges]);
 
 	const onNodeClick = useCallback(
 		(_event: React.MouseEvent, node: { id: string }) => {
@@ -87,8 +100,8 @@ export function ConversationTree({
 						const depth = node.data?.depth || 0;
 						// Color based on depth
 						if (depth === 0) return "#f97316"; // orange
-						if (depth <= 2) return "#22c55e"; // green
-						if (depth <= 4) return "#3b82f6"; // blue
+						if (Number(depth) <= 2) return "#22c55e"; // green
+						if (Number(depth) <= 4) return "#3b82f6"; // blue
 						return "#8b5cf6"; // purple
 					}}
 					pannable

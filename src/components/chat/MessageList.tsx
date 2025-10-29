@@ -15,12 +15,14 @@ interface MessageListProps {
 
 export function MessageList({ messages, isLoading }: MessageListProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const bottomRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (scrollRef.current) {
-			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-		}
-	});
+		// Use requestAnimationFrame to ensure DOM has updated
+		requestAnimationFrame(() => {
+			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+		});
+	}, [messages, isLoading]);
 
 	if (messages.length === 0 && !isLoading) {
 		return (
@@ -90,6 +92,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 						</div>
 					</Card>
 				)}
+				<div ref={bottomRef} />
 			</div>
 		</ScrollArea>
 	);

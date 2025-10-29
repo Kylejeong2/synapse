@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { ContextModal } from "./ContextModal";
+import { ContextModal } from "@/components/tree/ContextModal";
 
 interface ContextIndicatorProps {
 	nodeId: Id<"nodes">;

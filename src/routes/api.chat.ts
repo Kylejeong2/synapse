@@ -9,6 +9,9 @@ import type { Id } from "../../convex/_generated/dataModel";
  * Convex HTTP client for server-side database operations
  */
 const convexClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL!);
+const MODEL_NAME = (import.meta.env.VITE_OPENAI_MODEL as
+  | string
+  | undefined) || "gpt-4o-mini";
 
 /**
  * API route for handling chat requests with streaming responses
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/api/chat")({
 						.map((p: any) => p.text || "")
 						.join("");
 
-					// 1. Fetch context from Convex if nodeId exists
+                    // 1. Fetch context from Convex if nodeId exists
 					let ancestors: Array<{
 						userPrompt: string;
 						assistantResponse: string;
@@ -48,7 +51,7 @@ export const Route = createFileRoute("/api/chat")({
 						});
 					}
 
-					// 2. Build messages array
+                    // 2. Build messages array
 					const messages: Array<{
 						role: "user" | "assistant";
 						content: string;
@@ -63,64 +66,98 @@ export const Route = createFileRoute("/api/chat")({
 						});
 					}
 
-					// Add new prompt
+                    // Add new prompt
 					messages.push({ role: "user", content: prompt });
 
-					// 3. Stream from OpenAI
-					const result = streamText({
-						model: openai("gpt-5-mini-2025-08-07"), // gpt-5-pro-2025-10-06
-						messages,
-						async onFinish({ text, usage }) {
-							// 4. Save to Convex after streaming completes
-							try {
-								// Calculate depth
-								const depth = nodeId ? ancestors.length : 0;
+                    // 3. Create the node immediately so the minimap updates in real-time
+                    const depth = nodeId ? ancestors.length : 0;
+                    const position = {
+                        x: depth * 300,
+                        y: Math.random() * 100,
+                    };
 
-								// Calculate position (simple layout)
-								const position = {
-									x: depth * 300,
-									y: Math.random() * 100, // Will be properly laid out by dagre later
-								};
+                    const newNodeId = await convexClient.mutation(api.nodes.create, {
+                        conversationId: conversationId as Id<"conversations">,
+                        parentId: nodeId ? (nodeId as Id<"nodes">) : undefined,
+                        userPrompt: prompt,
+                        assistantResponse: "",
+                        model: MODEL_NAME,
+                        tokensUsed: 0,
+                        depth,
+                        position,
+                    });
 
-								const newNodeId = await convexClient.mutation(
-									api.nodes.create,
-									{
-										conversationId: conversationId as Id<"conversations">,
-										parentId: nodeId ? (nodeId as Id<"nodes">) : undefined,
-										userPrompt: prompt,
-										assistantResponse: text,
-										model: "gpt-4o",
-										tokensUsed: usage.totalTokens ?? -1, // so we know if this is failing TODO: fix this
-										depth,
-										position,
-									},
-								);
+                    // If this is the first node in the conversation, set it as root immediately
+                    if (!nodeId) {
+                        await convexClient.mutation(api.conversations.updateRootNode, {
+                            conversationId: conversationId as Id<"conversations">,
+                            rootNodeId: newNodeId as Id<"nodes">,
+                        });
+                    }
 
-								// Update conversation's root node if this is the first node
-								if (!nodeId) {
-									await convexClient.mutation(
-										api.conversations.updateRootNode,
-										{
-											conversationId: conversationId as Id<"conversations">,
-											rootNodeId: newNodeId as Id<"nodes">,
-										},
-									);
-								}
+                    // 4. Stream from the model (throttled updates to Convex for near-realtime UI)
+                    const result = streamText({
+                        model: openai(MODEL_NAME),
+                        messages,
+                        async onFinish({ text, usage }) {
+                            try {
+                                // Final patch with complete text and token usage
+                                await convexClient.mutation(api.nodes.updateContent, {
+                                    nodeId: newNodeId as Id<"nodes">,
+                                    assistantResponse: text,
+                                    tokensUsed: usage.totalTokens ?? -1,
+                                    model: MODEL_NAME,
+                                });
 
-								// Update last accessed time
-								await convexClient.mutation(
-									api.conversations.updateLastAccessed,
-									{
-										conversationId: conversationId as Id<"conversations">,
-									},
-								);
-							} catch (error) {
-								console.error("Error saving to Convex:", error);
-							}
-						},
-					});
+                                // Update last accessed time
+                                await convexClient.mutation(
+                                    api.conversations.updateLastAccessed,
+                                    {
+                                        conversationId: conversationId as Id<"conversations">,
+                                    },
+                                );
+                            } catch (error) {
+                                console.error("Error updating Convex:", error);
+                            }
+                        },
+                    });
 
-					return result.toTextStreamResponse();
+                    // Tap into the text stream to patch partial content to Convex
+                    const [tapStream, clientStream] = result.textStream.tee();
+                    (async () => {
+                        const reader = tapStream.getReader();
+                        let streamedText = "";
+                        let lastPatched = 0;
+                        const THROTTLE_MS = 200;
+                        try {
+                            while (true) {
+                                const { value, done } = await reader.read();
+                                if (done) break;
+                                if (value) {
+                                    streamedText += value;
+                                    const now = Date.now();
+                                    if (now - lastPatched >= THROTTLE_MS) {
+                                        lastPatched = now;
+                                        await convexClient.mutation(api.nodes.updateContent, {
+                                            nodeId: newNodeId as Id<"nodes">,
+                                            assistantResponse: streamedText,
+                                            tokensUsed: 0,
+                                            model: MODEL_NAME,
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error reading text stream for Convex patching:", e);
+                        } finally {
+                            reader.releaseLock();
+                        }
+                    })();
+
+                    // Return the client stream as a text/plain streaming response
+                    return new Response(clientStream, {
+                        headers: { "Content-Type": "text/plain; charset=utf-8" },
+                    });
 				} catch (error) {
 					console.error("Chat API error:", error);
 					return new Response(

@@ -5,6 +5,7 @@ export const env = createEnv({
 	server: {
 		SERVER_URL: z.string().url().optional(),
 		OPENAI_API_KEY: z.string().min(1),
+		MODEL_NAME: z.string().min(1).optional(),
 	},
 
 	/**
