@@ -9,7 +9,9 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "prepare": "husky",
+    "pre-commit": "lint-staged"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.1",
@@ -81,5 +83,11 @@
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": "biome check --write",
+    "index.html": "biome format --write",
+    "vite.config.{js,ts}": "biome check --write",
+    ".vscode/**/*.{json,js,ts}": "biome format --write"
   }
 }
