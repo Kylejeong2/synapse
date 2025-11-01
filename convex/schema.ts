@@ -24,6 +24,8 @@ export default defineSchema({
       x: v.number(),
       y: v.number(),
     }),
+    toolCalls: v.optional(v.array(v.any())), // Store tool call metadata
+    toolResults: v.optional(v.array(v.any())), // Store tool results
   })
     .index('conversationId', ['conversationId'])
     .index('parentId', ['parentId']),

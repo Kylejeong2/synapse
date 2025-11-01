@@ -98,12 +98,16 @@ export const updateContent = mutation({
     assistantResponse: v.string(),
     tokensUsed: v.number(),
     model: v.optional(v.string()),
+    toolCalls: v.optional(v.array(v.any())),
+    toolResults: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.nodeId, {
       assistantResponse: args.assistantResponse,
       tokensUsed: args.tokensUsed,
       model: args.model ?? undefined,
+      toolCalls: args.toolCalls ?? undefined,
+      toolResults: args.toolResults ?? undefined,
     })
   },
 })
