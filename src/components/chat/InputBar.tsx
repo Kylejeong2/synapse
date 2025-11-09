@@ -38,7 +38,6 @@ export function InputBar({
 				onChange={(e) => setInput(e.target.value)}
 				onKeyDown={handleKeyDown}
 				placeholder={placeholder}
-				disabled={isLoading}
 				className="min-h-[60px] pr-12 resize-none"
 				rows={2}
 			/>
