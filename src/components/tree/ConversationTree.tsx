@@ -35,30 +35,32 @@ export function ConversationTree({
 }: ConversationTreeProps) {
 	const { nodes: layoutNodes, edges: layoutEdges } = useTreeLayout(dbNodes);
 
-    // Add conversationId to node data (memoized to avoid infinite updates)
-    const nodesWithConvId = useMemo(() => (
-        layoutNodes.map((node) => ({
-            ...node,
-            data: {
-                ...node.data,
-                conversationId,
-            },
-        }))
-    ), [layoutNodes, conversationId]);
+	// Add conversationId to node data (memoized to avoid infinite updates)
+	const nodesWithConvId = useMemo(
+		() =>
+			layoutNodes.map((node) => ({
+				...node,
+				data: {
+					...node.data,
+					conversationId,
+				},
+			})),
+		[layoutNodes, conversationId],
+	);
 
-const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithConvId);
-const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+	const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithConvId);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
-// UI sync effect reacting to live-updating nodes from props (Convex).
-// Not a data fetch; keep as useEffect to update ReactFlow state.
-useEffect(() => {
-    setNodes(nodesWithConvId);
-}, [nodesWithConvId, setNodes]);
+	// UI sync effect reacting to live-updating nodes from props (Convex).
+	// Not a data fetch; keep as useEffect to update ReactFlow state.
+	useEffect(() => {
+		setNodes(nodesWithConvId);
+	}, [nodesWithConvId, setNodes]);
 
-// UI sync for edges; same rationale as above.
-useEffect(() => {
-    setEdges(layoutEdges);
-}, [layoutEdges, setEdges]);
+	// UI sync for edges; same rationale as above.
+	useEffect(() => {
+		setEdges(layoutEdges);
+	}, [layoutEdges, setEdges]);
 
 	const onNodeClick = useCallback(
 		(_event: React.MouseEvent, node: { id: string }) => {

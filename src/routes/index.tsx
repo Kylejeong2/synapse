@@ -1,13 +1,6 @@
 import { SignIn, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-	MessageSquare,
-	Plus,
-	Trash2,
-	GitBranch,
-	Network,
-	Zap,
-} from "lucide-react";
+import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import {
 	AlertDialog,
@@ -73,7 +66,7 @@ function ConversationsPage() {
 	) => {
 		e.stopPropagation();
 		try {
-			await deleteConversation({ conversationId: conversationId as any });
+			await deleteConversation({ conversationId });
 		} catch (error) {
 			console.error("Failed to delete conversation:", error);
 		}
@@ -103,73 +96,39 @@ function ConversationsPage() {
 
 	if (!isSignedIn) {
 		return (
-			<div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-br from-background via-muted/30 to-background">
-				<div className="absolute inset-0 bg-grid-slate-100 mask-[linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/25" />
+			<div className="flex flex-col items-center justify-center min-h-screen bg-background">
 				<div className="relative w-full max-w-6xl px-4 py-16">
 					{/* Hero Section */}
-					<div className="text-center mb-16 space-y-6">
-						<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+					<div className="text-center mb-20 space-y-6">
+						<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-medium mb-6">
 							<MessageSquare className="h-4 w-4" />
-							<span>AI-Powered Conversation Trees</span>
+							<span className="font-mono text-xs tracking-wide">
+								AI-POWERED CONVERSATION TREES
+							</span>
 						</div>
-						<h1 className="text-6xl font-bold tracking-tight bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-							Synapse
+						<h1 className="text-7xl font-bold tracking-tight mb-4">
+							<span className="text-foreground">Synapse</span>
 						</h1>
-						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+						<div className="inline-block border-l-2 border-primary/50 pl-4 mb-4">
+							<p className="text-left text-sm font-mono text-muted-foreground">
+								$ git checkout -b new-conversation
+							</p>
+						</div>
+						<p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
 							Fork conversations, explore multiple paths, and visualize your AI
 							interactions in an intuitive tree structure
 						</p>
 					</div>
 
-					{/* Features Grid */}
-					<div className="grid md:grid-cols-3 gap-6 mb-16">
-						<Card className="border-2 hover:border-primary/50 transition-colors">
-							<CardHeader>
-								<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-									<GitBranch className="h-6 w-6 text-primary" />
-								</div>
-								<CardTitle>Branch & Fork</CardTitle>
-								<CardDescription>
-									Create multiple conversation paths from any point. Explore
-									different ideas without losing context.
-								</CardDescription>
-							</CardHeader>
-						</Card>
-						<Card className="border-2 hover:border-primary/50 transition-colors">
-							<CardHeader>
-								<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-									<Network className="h-6 w-6 text-primary" />
-								</div>
-								<CardTitle>Visual Tree</CardTitle>
-								<CardDescription>
-									See your entire conversation history as an interactive flow
-									diagram. Navigate with ease.
-								</CardDescription>
-							</CardHeader>
-						</Card>
-						<Card className="border-2 hover:border-primary/50 transition-colors">
-							<CardHeader>
-								<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-									<Zap className="h-6 w-6 text-primary" />
-								</div>
-								<CardTitle>Context Tracking</CardTitle>
-								<CardDescription>
-									Track token usage across conversation chains. See exactly how
-									much context you're using.
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</div>
-
 					{/* Sign In Card */}
-					<Card className="w-full max-w-md mx-auto">
-						<CardHeader className="text-center">
-							<CardTitle>Get Started</CardTitle>
-							<CardDescription>
+					<Card className="w-full max-w-md mx-auto border-2 border-primary/20 shadow-xl bg-card/80 backdrop-blur mb-24">
+						<CardHeader className="text-center space-y-2 pb-6">
+							<CardTitle className="text-2xl">Get Started</CardTitle>
+							<CardDescription className="text-base">
 								Sign in to start creating conversation trees
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
+						<CardContent className="pb-8">
 							<SignIn />
 						</CardContent>
 					</Card>
@@ -179,14 +138,14 @@ function ConversationsPage() {
 	}
 
 	return (
-		<div className="min-h-screen overflow-y-auto bg-linear-to-br from-background via-muted/20 to-background">
-			<div className="container mx-auto px-4 py-8">
-				<div className="mb-8 flex items-center justify-between">
+		<div className="min-h-screen overflow-y-auto bg-background">
+			<div className="container mx-auto px-4 py-12">
+				<div className="mb-12 flex items-center justify-between">
 					<div>
-						<h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+						<h1 className="text-5xl font-bold mb-3 text-foreground">
 							Your Conversations
 						</h1>
-						<p className="text-muted-foreground">
+						<p className="text-muted-foreground text-lg">
 							Create branching conversations and explore ideas with AI
 						</p>
 					</div>
@@ -194,7 +153,7 @@ function ConversationsPage() {
 						onClick={handleNewConversation}
 						disabled={isCreating}
 						size="lg"
-						className="gap-2"
+						className="gap-2 shadow-lg"
 					>
 						<Plus className="h-5 w-5" />
 						{isCreating ? "Creating..." : "New Conversation"}
@@ -203,10 +162,10 @@ function ConversationsPage() {
 
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{/* Existing Conversations */}
-					{conversations?.map((conversation: any) => (
+					{conversations?.map((conversation) => (
 						<Card
 							key={conversation._id}
-							className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all relative group"
+							className="cursor-pointer hover:shadow-xl hover:shadow-primary/5 hover:border-primary/50 transition-all duration-300 relative group border-border/50 bg-card/50 backdrop-blur"
 							onClick={() =>
 								navigate({
 									to: "/chat/$id",
@@ -216,8 +175,8 @@ function ConversationsPage() {
 							}
 						>
 							<CardHeader>
-								<div className="flex justify-between items-start mb-2">
-									<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+								<div className="flex justify-between items-start mb-3">
+									<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 transition-colors">
 										<MessageSquare className="h-5 w-5 text-primary" />
 									</div>
 									<div className="flex gap-2 items-center">
@@ -274,9 +233,12 @@ function ConversationsPage() {
 				</div>
 
 				{conversations && conversations.length === 0 && (
-					<div className="text-center py-12 text-muted-foreground">
-						<MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-						<p>No conversations yet. Create one to get started!</p>
+					<div className="text-center py-20 text-muted-foreground">
+						<div className="inline-flex h-16 w-16 rounded-xl border-2 border-dashed border-muted-foreground/30 items-center justify-center mb-6">
+							<MessageSquare className="h-8 w-8 opacity-40" />
+						</div>
+						<p className="text-lg font-medium mb-2">No conversations yet</p>
+						<p className="text-sm">Create one to get started!</p>
 					</div>
 				)}
 			</div>

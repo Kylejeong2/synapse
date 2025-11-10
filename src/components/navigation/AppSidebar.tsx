@@ -1,6 +1,11 @@
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
-import { MessageSquare, Plus, Home } from "lucide-react";
+import type { Doc } from "convex/_generated/dataModel";
+import { Home, MessageSquare, Plus } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Sidebar,
 	SidebarContent,
@@ -14,16 +19,11 @@ import {
 	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	useConversations,
 	useCreateConversation,
 } from "@/hooks/useConversation";
-import { useState } from "react";
 import { HeaderUser } from "@/integrations/clerk/header-user";
-import { Doc } from "convex/_generated/dataModel";
 
 export function AppSidebar() {
 	const { user } = useUser();

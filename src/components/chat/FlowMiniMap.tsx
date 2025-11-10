@@ -6,13 +6,13 @@ import {
 	useEdgesState,
 	useNodesState,
 } from "@xyflow/react";
+import { Maximize2, MessageSquare, Minimize2, Network } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Maximize2, Minimize2, MessageSquare, Network } from "lucide-react";
 import "@xyflow/react/dist/style.css";
-import { useTreeLayout } from "@/hooks/useTreeLayout";
+import { type ConversationNode, NodeCard } from "@/components/tree/NodeCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { NodeCard, type ConversationNode } from "@/components/tree/NodeCard";
+import { useTreeLayout } from "@/hooks/useTreeLayout";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 interface FlowMiniMapProps {
@@ -43,31 +43,33 @@ export function FlowMiniMap({
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const { nodes: layoutNodes, edges: layoutEdges } = useTreeLayout(dbNodes);
 
-    // Add conversationId and highlight current node (memoized to avoid infinite updates)
-    const nodesWithData = useMemo(() => (
-        layoutNodes.map((node) => ({
-            ...node,
-            data: {
-                ...node.data,
-                conversationId,
-            },
-            className: node.id === currentNodeId ? "ring-2 ring-primary" : "",
-        }))
-    ), [layoutNodes, conversationId, currentNodeId]);
+	// Add conversationId and highlight current node (memoized to avoid infinite updates)
+	const nodesWithData = useMemo(
+		() =>
+			layoutNodes.map((node) => ({
+				...node,
+				data: {
+					...node.data,
+					conversationId,
+				},
+				className: node.id === currentNodeId ? "ring-2 ring-primary" : "",
+			})),
+		[layoutNodes, conversationId, currentNodeId],
+	);
 
-const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithData);
-const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+	const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithData);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
-// UI sync effect reacting to live-updating nodes/edges from props (Convex).
-// Not a data fetch; keep as useEffect to update ReactFlow state.
-useEffect(() => {
-    setNodes(nodesWithData);
-}, [nodesWithData, setNodes]);
+	// UI sync effect reacting to live-updating nodes/edges from props (Convex).
+	// Not a data fetch; keep as useEffect to update ReactFlow state.
+	useEffect(() => {
+		setNodes(nodesWithData);
+	}, [nodesWithData, setNodes]);
 
-// UI sync for edges; same rationale as above.
-useEffect(() => {
-    setEdges(layoutEdges);
-}, [layoutEdges, setEdges]);
+	// UI sync for edges; same rationale as above.
+	useEffect(() => {
+		setEdges(layoutEdges);
+	}, [layoutEdges, setEdges]);
 
 	const handleNodeClick = useCallback(
 		(_event: React.MouseEvent, node: { id: string }) => {
@@ -94,11 +96,11 @@ useEffect(() => {
 		);
 	}
 
-    const flowContent = (
+	const flowContent = (
 		<div className="w-full h-full relative flex flex-col">
 			{/* Header */}
-            <div className="px-4 py-3 border-b bg-background/80 backdrop-blur-sm flex items-center justify-between">
-                <div className="flex items-center gap-2">
+			<div className="px-4 py-3 border-b bg-background/80 backdrop-blur-sm flex items-center justify-between">
+				<div className="flex items-center gap-2">
 					<div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
 						<Network className="h-4 w-4 text-primary" />
 					</div>
@@ -159,9 +161,9 @@ useEffect(() => {
 	return (
 		<>
 			{flowContent}
-            <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-                <DialogContent className="w-screen h-screen max-w-none p-0 border-0 rounded-none">
-                    <div className="w-full h-full relative">
+			<Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+				<DialogContent className="w-screen h-screen max-w-none p-0 border-0 rounded-none">
+					<div className="w-full h-full relative">
 						<ReactFlow
 							nodes={nodes}
 							edges={edges}

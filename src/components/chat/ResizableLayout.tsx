@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ResizableLayoutProps {
@@ -64,9 +64,17 @@ export function ResizableLayout({
 			</div>
 
 			{/* Divider */}
+			{/* biome-ignore lint/a11y/useSemanticElements: Need div for resizable functionality */}
 			<div
 				className="hidden md:block w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors relative group"
 				onMouseDown={() => setIsDragging(true)}
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="Resize sidebar"
+				aria-valuenow={leftWidth}
+				aria-valuemin={20}
+				aria-valuemax={80}
+				tabIndex={0}
 			>
 				<div className="absolute inset-y-0 -left-1 -right-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 					<div className="w-1 h-12 bg-primary rounded-full" />

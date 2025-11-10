@@ -2,8 +2,8 @@
 
 @import 'tw-animate-css';
 
-/* Syntax highlighting for code blocks */
-@import 'highlight.js/styles/github-dark.css';
+/* KaTeX styles for math rendering */
+@import 'katex/dist/katex.min.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -138,4 +138,44 @@ code {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Math rendering styles */
+.katex {
+  font-size: 1.05em;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1rem 0;
+}
+
+/* Code block enhancements */
+code {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Smooth transitions for interactive elements */
+button:hover {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Better scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

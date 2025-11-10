@@ -1,12 +1,11 @@
 import type { UIMessage } from "@ai-sdk/react";
 import { memo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
+import remarkMath from "remark-math";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
+import { markdownComponents } from "./MarkdownComponents";
 import { ToolCallDisplay } from "./ToolCallDisplay";
 import { ToolResultDisplay } from "./ToolResultDisplay";
 
@@ -17,35 +16,48 @@ interface MessageListProps {
 
 // Memoized message card to prevent re-rendering
 const MessageCard = memo(({ message }: { message: UIMessage }) => {
+	if (message.role === "user") {
+		return (
+			<div className="w-full py-4">
+				<div className="max-w-3xl mx-auto px-4">
+					<div className="flex justify-end">
+						<div className="max-w-[70%] rounded-3xl px-5 py-2.5 bg-[#2f2f2f] text-white">
+							{message.parts.map((part, idx) => {
+								if (part.type === "text") {
+									return (
+										<div
+											key={`${message.id}-text-${idx}`}
+											className="text-[15px] leading-relaxed"
+										>
+											{part.text}
+										</div>
+									);
+								}
+								return null;
+							})}
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Assistant message
 	return (
-		<Card
-			className={`p-4 ${
-				message.role === "assistant" ? "bg-accent/50" : "bg-card"
-			}`}
-		>
-			<div className="flex items-start gap-3">
-				<Avatar className="h-8 w-8 shrink-0">
-					<AvatarFallback
-						className={
-							message.role === "assistant"
-								? "bg-linear-to-r from-orange-500 to-red-600 text-white"
-								: "bg-primary text-primary-foreground"
-						}
-					>
-						{message.role === "assistant" ? "AI" : "U"}
-					</AvatarFallback>
-				</Avatar>
-				<div className="flex-1 min-w-0">
+		<div className="w-full">
+			<div className="max-w-3xl mx-auto px-4 py-4">
+				<div className="space-y-4">
 					{message.parts.map((part, idx) => {
 						if (part.type === "text") {
 							return (
 								<div
 									key={`${message.id}-text-${idx}`}
-									className="prose prose-sm dark:prose-invert max-w-none"
+									className="text-[15px] leading-[1.8] text-foreground"
 								>
 									<ReactMarkdown
-										rehypePlugins={[rehypeHighlight]}
-										remarkPlugins={[remarkGfm]}
+										rehypePlugins={[rehypeKatex]}
+										remarkPlugins={[remarkGfm, remarkMath]}
+										components={markdownComponents}
 									>
 										{part.text}
 									</ReactMarkdown>
@@ -82,8 +94,9 @@ const MessageCard = memo(({ message }: { message: UIMessage }) => {
 						return null;
 					})}
 				</div>
+				<div className="mt-4 border-b border-border/30" />
 			</div>
-		</Card>
+		</div>
 	);
 });
 
@@ -129,28 +142,25 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 	}
 
 	return (
-		<ScrollArea className="flex-1 px-4" ref={scrollRef}>
-			<div className="max-w-3xl mx-auto py-8 space-y-6">
+		<ScrollArea className="flex-1 bg-background" ref={scrollRef}>
+			<div className="w-full">
 				{messages.map((message) => (
 					<MessageCard key={message.id} message={message} />
 				))}
 
 				{isLoading && (
-					<Card className="p-4 bg-accent/50">
-						<div className="flex items-start gap-3">
-							<Avatar className="h-8 w-8 shrink-0">
-								<AvatarFallback className="bg-linear-to-r from-orange-500 to-red-600 text-white">
-									AI
-								</AvatarFallback>
-							</Avatar>
-							<div className="flex-1 space-y-2">
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-3/4" />
+					<div className="w-full">
+						<div className="max-w-3xl mx-auto px-4 py-4">
+							<div className="flex gap-2">
+								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
+								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
+								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce" />
 							</div>
+							<div className="mt-4 border-b border-border/30" />
 						</div>
-					</Card>
+					</div>
 				)}
-				<div ref={bottomRef} />
+				<div ref={bottomRef} className="h-32" />
 			</div>
 		</ScrollArea>
 	);

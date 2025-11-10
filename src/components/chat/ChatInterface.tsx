@@ -161,12 +161,12 @@ export function ChatInterface({
 			<MessageList messages={displayMessages} isLoading={isLoading} />
 
 			{/* Input */}
-			<div className="border-t bg-background p-4">
+			<div className="border-t border-border/30 bg-background p-4">
 				<div className="max-w-3xl mx-auto">
 					<InputBar
 						onSend={handleSend}
 						isLoading={isLoading}
-						placeholder="Type your message... (Shift+Enter for new line)"
+						placeholder="Message Synapse"
 					/>
 				</div>
 			</div>

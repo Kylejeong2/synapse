@@ -4,9 +4,9 @@ import { memo } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useContextChain } from "@/hooks/useConversation";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { ContextIndicator } from "./ContextIndicator";
-import { useContextChain } from "@/hooks/useConversation";
 
 export interface NodeData extends Record<string, unknown> {
 	userPrompt: string;
@@ -58,7 +58,6 @@ export const NodeCard = memo((props: NodeProps<ConversationNode>) => {
 						tokensUsed={data.tokensUsed}
 						cumulativeTokens={contextChain?.totalTokens}
 					/>
-
 				</CardContent>
 			</Card>
 			<Handle type="source" position={Position.Bottom} className="w-3 h-3" />

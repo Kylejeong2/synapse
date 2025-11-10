@@ -2,13 +2,13 @@ import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { AppSidebar } from "@/components/navigation/AppSidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
 	useConversation,
 	useUpdateLastAccessed,
 } from "@/hooks/useConversation";
 import type { Id } from "../../convex/_generated/dataModel";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/navigation/AppSidebar";
 
 export const Route = createFileRoute("/chat/$id")({
 	component: ChatPage,
@@ -39,26 +39,26 @@ function ChatPage() {
 		}
 	}, [id, updateLastAccessed]);
 
-    // Default to most recently created node if no fromNode is specified
-    // NOTE: Convex live query-dependent side effect.
-    // Navigates when `conversation.nodes` streams in. Keep as useEffect; not a data fetch.
-    useEffect(() => {
-        if (!conversation?.nodes || conversation.nodes.length === 0) return;
-        if (fromNode) return;
+	// Default to most recently created node if no fromNode is specified
+	// NOTE: Convex live query-dependent side effect.
+	// Navigates when `conversation.nodes` streams in. Keep as useEffect; not a data fetch.
+	useEffect(() => {
+		if (!conversation?.nodes || conversation.nodes.length === 0) return;
+		if (fromNode) return;
 
-        const latest = conversation.nodes.reduce((a, b) =>
-            a._creationTime > b._creationTime ? a : b,
-        );
+		const latest = conversation.nodes.reduce((a, b) =>
+			a._creationTime > b._creationTime ? a : b,
+		);
 
-        if (latest?._id) {
-            navigate({
-                to: "/chat/$id",
-                params: { id },
-                search: { fromNode: latest._id },
-                replace: true,
-            });
-        }
-    }, [conversation?.nodes, fromNode, id, navigate]);
+		if (latest?._id) {
+			navigate({
+				to: "/chat/$id",
+				params: { id },
+				search: { fromNode: latest._id },
+				replace: true,
+			});
+		}
+	}, [conversation?.nodes, fromNode, id, navigate]);
 
 	if (!conversation) {
 		return (

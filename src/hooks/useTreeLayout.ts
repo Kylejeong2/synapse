@@ -69,7 +69,7 @@ export function useTreeLayout(nodes: LayoutNode[]) {
 			.filter((node) => node.parentId)
 			.map((node) => ({
 				id: `${node.parentId}-${node._id}`,
-				source: node.parentId!,
+				source: node.parentId as string,
 				target: node._id,
 				type: "smoothstep",
 				animated: false,
