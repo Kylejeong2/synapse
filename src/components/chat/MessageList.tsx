@@ -105,27 +105,13 @@ MessageCard.displayName = "MessageCard";
 export function MessageList({ messages, isLoading }: MessageListProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
-	const prevMessagesLengthRef = useRef(messages.length);
-
-	// Debounced scroll - only scroll when new messages are added, not on content updates
+	// const prevMessagesLengthRef = useRef(messages.length);
+	// Scroll to bottom when messages change or when loading
 	useEffect(() => {
-		if (messages.length > prevMessagesLengthRef.current) {
-			// New message added
-			requestAnimationFrame(() => {
-				bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-			});
-		}
-		prevMessagesLengthRef.current = messages.length;
-	}, [messages.length]);
-
-	// Also scroll when loading state changes (new AI response starting)
-	useEffect(() => {
-		if (isLoading) {
-			requestAnimationFrame(() => {
-				bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-			});
-		}
-	}, [isLoading]);
+		requestAnimationFrame(() => {
+			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+		});
+	}, []);
 
 	if (messages.length === 0 && !isLoading) {
 		return (

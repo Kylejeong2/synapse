@@ -51,8 +51,22 @@ export function ChatInterface({
 			: `${conversationId}`;
 	}, [conversationId, fromNodeId, ancestors?.length]);
 
+	// Keep session stable during streaming so we don't reset the chat hook
+	const activeSessionIdRef = useRef(sessionId);
+	const statusRef = useRef<"streaming" | "submitted" | "ready" | "error">(
+		"ready",
+	);
+
+	if (
+		statusRef.current !== "streaming" &&
+		statusRef.current !== "submitted" &&
+		sessionId !== activeSessionIdRef.current
+	) {
+		activeSessionIdRef.current = sessionId;
+	}
+
 	const { messages, sendMessage, status } = useChat({
-		id: sessionId,
+		id: activeSessionIdRef.current,
 		transport: new TextStreamChatTransport({
 			api: "/api/chat",
 			body: {
@@ -62,62 +76,92 @@ export function ChatInterface({
 		}),
 	});
 
+	statusRef.current = status;
 	const isLoading = status === "submitted" || status === "streaming";
-	const prevStatusRef = useRef(status);
 
-	// After a message is sent and the response completes, navigate to the new child node
-	// so subsequent messages build on it instead of creating siblings
+	// Seamless navigation: Navigate to new node as soon as it's created
 	useEffect(() => {
-		const prevStatus = prevStatusRef.current;
-		prevStatusRef.current = status;
+		if (!isLoading) return;
+		if (!conversation?.nodes) return;
 
-		// Detect when streaming just finished
-		if (
-			prevStatus === "streaming" &&
-			status !== "streaming" &&
-			status !== "submitted"
-		) {
-			if (!conversation?.nodes || conversation.nodes.length === 0) return;
+		// Find a new child node created after the interaction started
+		// We can check if there's a node that is a child of the current fromNodeId (or root if none)
+		// and is very recent.
+		// However, a simpler check is just: is there a child of fromNodeId that we aren't currently on?
 
-			let targetNode: (typeof conversation.nodes)[0] | undefined;
+		let targetNode: (typeof conversation.nodes)[0] | undefined;
 
-			if (fromNodeId) {
-				// Find the most recently created node that is a child of fromNodeId
-				const children = conversation.nodes.filter(
-					(node) => node.parentId === fromNodeId,
-				);
-
-				if (children.length > 0) {
-					// Get the most recent child
-					targetNode = children.reduce((latest, current) =>
-						current._creationTime > latest._creationTime ? current : latest,
-					);
-				}
-			} else {
-				// If no fromNodeId (first message), find the most recent root node
-				const rootNodes = conversation.nodes.filter((node) => !node.parentId);
-
-				if (rootNodes.length > 0) {
-					targetNode = rootNodes.reduce((latest, current) =>
-						current._creationTime > latest._creationTime ? current : latest,
-					);
-				}
-			}
-
-			// Navigate to update the URL with the new node as fromNode
-			if (targetNode && targetNode._id !== fromNodeId) {
-				navigate({
-					to: "/chat/$id",
-					params: { id: conversationId },
-					search: { fromNode: targetNode._id },
-					replace: true,
-				});
-			}
+		if (fromNodeId) {
+			const children = conversation.nodes.filter(
+				(node) => node.parentId === fromNodeId,
+			);
+			// Sort by creation time descending
+			children.sort((a, b) => b._creationTime - a._creationTime);
+			targetNode = children[0];
+		} else {
+			const rootNodes = conversation.nodes.filter((node) => !node.parentId);
+			rootNodes.sort((a, b) => b._creationTime - a._creationTime);
+			targetNode = rootNodes[0];
 		}
-	}, [status, conversation?.nodes, fromNodeId, conversationId, navigate]);
+
+		// If we found a target node and it's different from where we are
+		// AND it looks like it matches our current interaction (e.g. created very recently)
+		// We navigate to it.
+		if (targetNode && targetNode._id !== fromNodeId) {
+			// We only navigate if this seems to be the node we just created.
+			// Since we are "isLoading", we assume the user just sent a message.
+			// The backend creates the node almost immediately.
+			navigate({
+				to: "/chat/$id",
+				params: { id: conversationId },
+				search: { fromNode: targetNode._id },
+				replace: true,
+			});
+		}
+	}, [conversation?.nodes, fromNodeId, isLoading, conversationId, navigate]);
 
 	const displayMessages = useMemo(() => {
 		if (!initialMessages?.length) return messages;
+
+		// If we have local messages (streaming), we might have also navigated to the new node already.
+		// If we navigated, the new node is in `initialMessages`.
+		// We need to de-duplicate.
+
+		if (messages.length > 0) {
+			// const lastLocalMessage = messages[messages.length - 1];
+			// const lastInitialMessage = initialMessages[initialMessages.length - 1];
+
+			// Simple check: if we have both, and we are streaming, the local `messages` are the "active" ones.
+			// If we navigated, `initialMessages` now includes the User/Assistant pair for the new node.
+			// But `messages` ALSO has them (or at least the user part and streaming assistant part).
+
+			// If we are streaming (messages.length > 0), we generally want to show
+			// the `initialMessages` UP TO the point where the stream starts.
+
+			// If we navigated to the new node, `initialMessages` has 2 more messages than before (User + AI).
+			// We should exclude those 2 from `initialMessages` and let `messages` handle the display
+			// so we get the live stream effect.
+
+			// Heuristic: Check if the last user message in initialMessages matches the first user message in messages
+			const firstLocalUserMsg = messages.find((m) => m.role === "user");
+
+			if (firstLocalUserMsg) {
+				// Find where this message starts in initialMessages
+				const matchIndex = initialMessages.findIndex(
+					(m) =>
+						m.role === "user" &&
+						m.parts[0].type === "text" &&
+						firstLocalUserMsg.parts[0].type === "text" &&
+						m.parts[0].text === firstLocalUserMsg.parts[0].text,
+				);
+
+				if (matchIndex !== -1) {
+					// Return everything before the match, plus the local messages
+					return [...initialMessages.slice(0, matchIndex), ...messages];
+				}
+			}
+		}
+
 		return [...initialMessages, ...messages];
 	}, [initialMessages, messages]);
 

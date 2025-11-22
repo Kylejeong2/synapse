@@ -100,24 +100,9 @@ function ConversationsPage() {
 				<div className="relative w-full max-w-6xl px-4 py-16">
 					{/* Hero Section */}
 					<div className="text-center mb-20 space-y-6">
-						<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-medium mb-6">
-							<MessageSquare className="h-4 w-4" />
-							<span className="font-mono text-xs tracking-wide">
-								AI-POWERED CONVERSATION TREES
-							</span>
-						</div>
 						<h1 className="text-7xl font-bold tracking-tight mb-4">
 							<span className="text-foreground">Synapse</span>
 						</h1>
-						<div className="inline-block border-l-2 border-primary/50 pl-4 mb-4">
-							<p className="text-left text-sm font-mono text-muted-foreground">
-								$ git checkout -b new-conversation
-							</p>
-						</div>
-						<p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-							Fork conversations, explore multiple paths, and visualize your AI
-							interactions in an intuitive tree structure
-						</p>
 					</div>
 
 					{/* Sign In Card */}
