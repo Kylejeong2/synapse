@@ -122,3 +122,16 @@ export const deleteConversation = mutation({
   },
 })
 
+// Update the default model for a conversation
+export const updateDefaultModel = mutation({
+  args: {
+    conversationId: v.id('conversations'),
+    model: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, {
+      defaultModel: args.model,
+    })
+  },
+})
+

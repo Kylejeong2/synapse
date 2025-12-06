@@ -12,6 +12,7 @@ import { ToolResultDisplay } from "./ToolResultDisplay";
 interface MessageListProps {
 	messages: UIMessage[];
 	isLoading?: boolean;
+	isThinkingModel?: boolean;
 }
 
 // Memoized message card to prevent re-rendering
@@ -102,11 +103,32 @@ const MessageCard = memo(({ message }: { message: UIMessage }) => {
 
 MessageCard.displayName = "MessageCard";
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+// Thinking indicator for reasoning models
+function ThinkingIndicator() {
+	return (
+		<div className="flex items-center gap-3 text-muted-foreground">
+			<div className="relative flex items-center justify-center w-6 h-6">
+				{/* Outer pulsing ring */}
+				<div className="absolute w-6 h-6 rounded-full bg-violet-500/20 animate-ping" />
+				{/* Inner spinning gradient */}
+				<div className="relative w-4 h-4 rounded-full bg-linear-to-tr from-violet-500 to-purple-600 animate-spin" />
+			</div>
+			<span className="text-sm font-medium text-violet-400 animate-pulse">
+				Thinking...
+			</span>
+		</div>
+	);
+}
+
+export function MessageList({
+	messages,
+	isLoading,
+	isThinkingModel,
+}: MessageListProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	// const prevMessagesLengthRef = useRef(messages.length);
-	// Scroll to bottom when messages change or when loading
+	// Scroll to bottom when messages change
 	useEffect(() => {
 		requestAnimationFrame(() => {
 			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -137,11 +159,15 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 				{isLoading && (
 					<div className="w-full">
 						<div className="max-w-3xl mx-auto px-4 py-4">
-							<div className="flex gap-2">
-								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
-								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
-								<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce" />
-							</div>
+							{isThinkingModel ? (
+								<ThinkingIndicator />
+							) : (
+								<div className="flex gap-2">
+									<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
+									<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
+									<div className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce" />
+								</div>
+							)}
 							<div className="mt-4 border-b border-border/30" />
 						</div>
 					</div>

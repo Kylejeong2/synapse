@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
+	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
@@ -46,9 +47,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 		],
 	}),
-
+	component: RootComponent,
+	notFoundComponent: () => (
+		<div className="flex items-center justify-center h-screen">
+			<div className="text-center">
+				<h1 className="text-4xl font-bold mb-2">404</h1>
+				<p className="text-muted-foreground">Page not found</p>
+			</div>
+		</div>
+	),
 	shellComponent: RootDocument,
 });
+
+function RootComponent() {
+	return <Outlet />;
+}
 
 /**
  * Root document component that wraps the entire application
