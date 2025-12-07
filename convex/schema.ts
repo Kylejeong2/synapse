@@ -7,6 +7,7 @@ export default defineSchema({
     title: v.string(), // Auto-generated from first prompt
     rootNodeId: v.optional(v.id('nodes')), // Entry point (optional initially)
     lastAccessedAt: v.number(),
+    defaultModel: v.optional(v.string()), // User's selected model for this conversation
   })
     .index('userId', ['userId'])
     .index('lastAccessed', ['userId', 'lastAccessedAt']),

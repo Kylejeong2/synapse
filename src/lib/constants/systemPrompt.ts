@@ -76,31 +76,3 @@ Generate or edit images from text descriptions:
 
 If you must refuse for safety reasons, explain clearly and suggest safer alternatives when appropriate.
 `;
-
-// Alternative shorter prompt for specific use cases
-export const SHORT_SYSTEM_PROMPT = `You are a helpful AI assistant. Provide accurate, concise, and relevant responses to user queries.`;
-
-// Function to get system prompt with optional customization
-export function getSystemPrompt(options?: {
-	includeContext?: string;
-	role?: string;
-	additionalInstructions?: string;
-}): string {
-	let prompt = SYSTEM_PROMPT;
-
-	if (options) {
-		if (options.role) {
-			prompt = `${prompt}\n\nRole: ${options.role}`;
-		}
-
-		if (options.includeContext) {
-			prompt = `${prompt}\n\nContext: ${options.includeContext}`;
-		}
-
-		if (options.additionalInstructions) {
-			prompt = `${prompt}\n\nAdditional Instructions: ${options.additionalInstructions}`;
-		}
-	}
-
-	return prompt;
-}

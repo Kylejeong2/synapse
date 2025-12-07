@@ -1,14 +1,20 @@
 import { type UIMessage, useChat } from "@ai-sdk/react";
 import { useNavigate } from "@tanstack/react-router";
 import { TextStreamChatTransport } from "ai";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useConversation, useNodeAncestors } from "@/hooks/useConversation";
+import {
+	useConversation,
+	useNodeAncestors,
+	useUpdateDefaultModel,
+} from "@/hooks/useConversation";
+import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/constants/models";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { FlowMiniMap } from "./FlowMiniMap";
 import { InputBar } from "./InputBar";
 import { MessageList } from "./MessageList";
+import { ModelSelector } from "./ModelSelector";
 import { ResizableLayout } from "./ResizableLayout";
 import { TreeViewButton } from "./TreeViewButton";
 
@@ -26,6 +32,28 @@ export function ChatInterface({
 	const navigate = useNavigate();
 	const conversation = useConversation(conversationId);
 	const ancestors = useNodeAncestors(fromNodeId ?? null);
+	const updateDefaultModel = useUpdateDefaultModel();
+
+	// Model state - initialize from conversation's defaultModel or fallback to default
+	const [selectedModel, setSelectedModel] = useState<ModelId>(DEFAULT_MODEL);
+
+	// Sync model selection with conversation's defaultModel when it loads
+	useEffect(() => {
+		if (conversation?.defaultModel) {
+			const model = conversation.defaultModel as ModelId;
+			if (model in MODELS) {
+				setSelectedModel(model);
+			}
+		}
+	}, [conversation?.defaultModel]);
+
+	const handleModelChange = (model: ModelId) => {
+		setSelectedModel(model);
+		// Persist to conversation
+		updateDefaultModel({ conversationId, model });
+	};
+
+	const isThinkingModel = MODELS[selectedModel]?.thinking ?? false;
 
 	const initialMessages: UIMessage[] = useMemo(() => {
 		if (!ancestors || ancestors.length === 0) return [];
@@ -46,10 +74,11 @@ export function ChatInterface({
 	}, [ancestors]);
 
 	const sessionId = useMemo(() => {
-		return fromNodeId
+		const base = fromNodeId
 			? `${conversationId}:${fromNodeId}:${ancestors?.length ?? 0}`
 			: `${conversationId}`;
-	}, [conversationId, fromNodeId, ancestors?.length]);
+		return `${base}:${selectedModel}`;
+	}, [conversationId, fromNodeId, ancestors?.length, selectedModel]);
 
 	// Keep session stable during streaming so we don't reset the chat hook
 	const activeSessionIdRef = useRef(sessionId);
@@ -65,15 +94,22 @@ export function ChatInterface({
 		activeSessionIdRef.current = sessionId;
 	}
 
+	const transport = useMemo(
+		() =>
+			new TextStreamChatTransport({
+				api: "/api/chat",
+				body: {
+					conversationId,
+					nodeId: fromNodeId,
+					model: selectedModel,
+				},
+			}),
+		[conversationId, fromNodeId, selectedModel],
+	);
+
 	const { messages, sendMessage, status } = useChat({
 		id: activeSessionIdRef.current,
-		transport: new TextStreamChatTransport({
-			api: "/api/chat",
-			body: {
-				conversationId,
-				nodeId: fromNodeId,
-			},
-		}),
+		transport,
 	});
 
 	statusRef.current = status;
@@ -187,25 +223,35 @@ export function ChatInterface({
 	) : null;
 
 	const rightPanel = (
-		<div className="flex flex-col h-screen overflow-auto">
-			{/* Header with sidebar trigger and fork indicator */}
-			<div className="border-b bg-background/80 backdrop-blur-sm">
-				<div className="flex items-center gap-2 px-4 py-2">
-					<SidebarTrigger />
-					{forkingFromPrompt && (
-						<Badge variant="secondary" className="text-xs">
-							Forking from: {forkingFromPrompt.slice(0, 50)}
-							{forkingFromPrompt.length > 50 ? "..." : ""}
-						</Badge>
-					)}
+		<div className="flex flex-col h-screen">
+			{/* Header with sidebar trigger, fork indicator, and model selector */}
+			<div className="border-b bg-background/80 backdrop-blur-sm shrink-0">
+				<div className="flex items-center justify-between px-4 py-2">
+					<div className="flex items-center gap-2">
+						<SidebarTrigger />
+						{forkingFromPrompt && (
+							<Badge variant="secondary" className="text-xs">
+								Forking from: {forkingFromPrompt.slice(0, 50)}
+								{forkingFromPrompt.length > 50 ? "..." : ""}
+							</Badge>
+						)}
+					</div>
+					<ModelSelector
+						selectedModel={selectedModel}
+						onModelChange={handleModelChange}
+					/>
 				</div>
 			</div>
 
 			{/* Messages */}
-			<MessageList messages={displayMessages} isLoading={isLoading} />
+			<MessageList
+				messages={displayMessages}
+				isLoading={isLoading}
+				isThinkingModel={isThinkingModel}
+			/>
 
-			{/* Input */}
-			<div className="border-t border-border/30 bg-background p-4">
+			{/* Input - sticky at bottom */}
+			<div className="border-t border-border/30 bg-background p-4 shrink-0">
 				<div className="max-w-3xl mx-auto">
 					<InputBar
 						onSend={handleSend}
