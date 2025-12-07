@@ -1,5 +1,5 @@
 import type { UIMessage } from "@ai-sdk/react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -126,10 +126,68 @@ export function MessageList({
 }: MessageListProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
+	const prevMessageCountRef = useRef(messages.length);
+	const prevLastMessageTextRef = useRef<string>("");
 
-	// Scroll to bottom when messages change
+	// Track message changes for auto-scroll
+	const lastMessage = messages[messages.length - 1];
+	const lastMessageText =
+		lastMessage?.parts
+			?.filter((p) => p.type === "text")
+			.map((p) => (p as { text: string }).text)
+			.join("") || "";
+
+	// Track scroll position to preserve during re-renders
+	const savedScrollRef = useRef<{ top: number; height: number } | null>(null);
+
+	// Save scroll position before re-render (layout effect runs synchronously)
+	useLayoutEffect(() => {
+		const scrollElement = scrollRef.current;
+		if (!scrollElement) return;
+
+		// Save current position for next render
+		savedScrollRef.current = {
+			top: scrollElement.scrollTop,
+			height: scrollElement.scrollHeight,
+		};
+	});
+
+	// Initial scroll on mount
 	useEffect(() => {
-		if (scrollRef.current) {
+		if (scrollRef.current && messages.length > 0) {
+			requestAnimationFrame(() => {
+				if (scrollRef.current) {
+					scrollRef.current.scrollTo({
+						top: scrollRef.current.scrollHeight,
+						behavior: "auto",
+					});
+				}
+			});
+		}
+	}, [messages.length]);
+
+	const prevIsLoadingRef = useRef(isLoading);
+
+	// Auto-scroll when messages change during streaming
+	useEffect(() => {
+		if (!scrollRef.current) return;
+
+		// Check if messages actually changed
+		const messageCountChanged = messages.length !== prevMessageCountRef.current;
+		const messageContentChanged =
+			lastMessageText !== prevLastMessageTextRef.current;
+		const loadingStarted = !prevIsLoadingRef.current && isLoading;
+
+		// Update refs
+		prevMessageCountRef.current = messages.length;
+		prevLastMessageTextRef.current = lastMessageText;
+		prevIsLoadingRef.current = isLoading ?? false;
+
+		// Auto-scroll when loading/streaming and messages change
+		if (
+			isLoading &&
+			(messageCountChanged || messageContentChanged || loadingStarted)
+		) {
 			requestAnimationFrame(() => {
 				if (scrollRef.current) {
 					scrollRef.current.scrollTo({
@@ -139,7 +197,7 @@ export function MessageList({
 				}
 			});
 		}
-	}, []);
+	}, [messages, isLoading, lastMessageText]);
 
 	if (messages.length === 0 && !isLoading) {
 		return (
