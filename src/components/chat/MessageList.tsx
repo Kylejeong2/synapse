@@ -4,7 +4,6 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { markdownComponents } from "./MarkdownComponents";
 import { ToolCallDisplay } from "./ToolCallDisplay";
 import { ToolResultDisplay } from "./ToolResultDisplay";
@@ -127,12 +126,19 @@ export function MessageList({
 }: MessageListProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
-	// const prevMessagesLengthRef = useRef(messages.length);
+
 	// Scroll to bottom when messages change
 	useEffect(() => {
-		requestAnimationFrame(() => {
-			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-		});
+		if (scrollRef.current) {
+			requestAnimationFrame(() => {
+				if (scrollRef.current) {
+					scrollRef.current.scrollTo({
+						top: scrollRef.current.scrollHeight,
+						behavior: "smooth",
+					});
+				}
+			});
+		}
 	}, []);
 
 	if (messages.length === 0 && !isLoading) {
@@ -150,7 +156,10 @@ export function MessageList({
 	}
 
 	return (
-		<ScrollArea className="flex-1 bg-background" ref={scrollRef}>
+		<div
+			className="flex-1 bg-background overflow-y-auto overflow-x-hidden"
+			ref={scrollRef}
+		>
 			<div className="w-full">
 				{messages.map((message) => (
 					<MessageCard key={message.id} message={message} />
@@ -174,6 +183,6 @@ export function MessageList({
 				)}
 				<div ref={bottomRef} className="h-32" />
 			</div>
-		</ScrollArea>
+		</div>
 	);
 }
