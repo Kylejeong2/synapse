@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000 && npx convex dev",
+    "dev": "vite dev --port 3000",
     "build": "vite build",
     "serve": "vite preview",
     "format": "biome format",

@@ -11,9 +11,31 @@ import { SYSTEM_PROMPT } from "../lib/constants";
 import {
 	DEFAULT_MODEL,
 	MODELS,
+	type ModelConfig,
 	type ModelId,
 	type ModelProvider,
 } from "../lib/constants/models";
+
+/**
+ * Token usage object structure from AI SDK
+ * Different providers may expose different fields
+ */
+interface TokenUsage {
+	/** Total tokens (may or may not include thinking tokens) */
+	totalTokens?: number;
+	/** Input/prompt tokens */
+	promptTokens?: number;
+	inputTokens?: number;
+	/** Output/completion tokens */
+	completionTokens?: number;
+	outputTokens?: number;
+	/** Thinking/reasoning tokens (for thinking models) */
+	thinkingTokens?: number;
+	reasoningTokens?: number;
+	thoughtTokens?: number;
+	/** Provider-specific fields */
+	[x: string]: unknown;
+}
 
 /**
  * Convex HTTP client for server-side database operations
@@ -23,6 +45,118 @@ if (!CONVEX_URL) {
 	throw new Error("VITE_CONVEX_URL environment variable is not set");
 }
 const convexClient = new ConvexHttpClient(CONVEX_URL);
+
+/**
+ * Calculate total tokens including thinking tokens for thinking models
+ * Handles different provider token reporting formats
+ */
+function calculateTotalTokens(
+	usage: TokenUsage,
+	modelConfig: ModelConfig,
+): number {
+	// Validate usage object exists
+	if (!usage || typeof usage !== "object") {
+		console.warn("[Token Counting] Invalid usage object:", usage);
+		return -1;
+	}
+
+	const isThinkingModel = modelConfig.thinking;
+
+	// Extract token values with fallbacks for different field names
+	const promptTokens = usage.promptTokens ?? usage.inputTokens ?? 0;
+	const completionTokens = usage.completionTokens ?? usage.outputTokens ?? 0;
+	const thinkingTokens =
+		usage.thinkingTokens ?? usage.reasoningTokens ?? usage.thoughtTokens ?? 0;
+	const totalTokens = usage.totalTokens;
+
+	// Validate token counts are non-negative
+	if (
+		promptTokens < 0 ||
+		completionTokens < 0 ||
+		thinkingTokens < 0 ||
+		(totalTokens !== undefined && totalTokens < 0)
+	) {
+		console.warn("[Token Counting] Negative token count detected:", {
+			promptTokens,
+			completionTokens,
+			thinkingTokens,
+			totalTokens,
+		});
+	}
+
+	// For thinking models, explicitly calculate total including thinking tokens
+	if (isThinkingModel) {
+		// If we have individual token counts, sum them
+		if (promptTokens > 0 || completionTokens > 0 || thinkingTokens > 0) {
+			const calculatedTotal = promptTokens + completionTokens + thinkingTokens;
+
+			// Log detailed breakdown for thinking models
+			console.log(
+				`[Token Counting] ${modelConfig.name} (${modelConfig.provider}):`,
+				{
+					promptTokens,
+					completionTokens,
+					thinkingTokens,
+					calculatedTotal,
+					totalTokensFromSDK: totalTokens,
+					usageObject: usage,
+				},
+			);
+
+			// If SDK provides totalTokens, compare with our calculation
+			if (totalTokens !== undefined) {
+				const difference = Math.abs(calculatedTotal - totalTokens);
+				if (difference > 0) {
+					console.log(
+						`[Token Counting] Difference between calculated and SDK total: ${difference}`,
+					);
+				}
+				// Use SDK total if it's higher (might include other tokens we're not tracking)
+				return Math.max(calculatedTotal, totalTokens);
+			}
+
+			return calculatedTotal;
+		}
+
+		// Fallback to totalTokens if individual counts aren't available
+		if (totalTokens !== undefined && totalTokens >= 0) {
+			console.log(
+				`[Token Counting] ${modelConfig.name}: Using SDK totalTokens: ${totalTokens}`,
+			);
+			return totalTokens;
+		}
+
+		console.warn(
+			`[Token Counting] ${modelConfig.name}: Unable to determine token count`,
+			usage,
+		);
+		return -1;
+	}
+
+	// For non-thinking models, use standard calculation
+	if (promptTokens > 0 || completionTokens > 0) {
+		const calculatedTotal = promptTokens + completionTokens;
+
+		// If SDK provides totalTokens, prefer it (might be more accurate)
+		if (totalTokens !== undefined && totalTokens >= 0) {
+			return totalTokens;
+		}
+
+		return calculatedTotal;
+	}
+
+	// Final fallback to totalTokens
+	if (totalTokens !== undefined && totalTokens >= 0) {
+		return totalTokens;
+	}
+
+	// If we can't determine token count, log warning and return -1
+	console.warn(
+		"[Token Counting] Unable to determine token count from usage object:",
+		usage,
+	);
+	return -1;
+}
 
 /**
  * Get the appropriate model instance based on provider and model ID
@@ -147,11 +281,17 @@ export const Route = createFileRoute("/api/chat")({
 								const toolCalls = responseData.toolCalls || undefined;
 								const toolResults = responseData.toolResults || undefined;
 
+								// Calculate total tokens including thinking tokens for thinking models
+								const totalTokens = calculateTotalTokens(
+									usage as TokenUsage,
+									modelConfig,
+								);
+
 								// Final patch with complete text, token usage, and tool data
 								await convexClient.mutation(api.nodes.updateContent, {
 									nodeId: newNodeId as Id<"nodes">,
 									assistantResponse: text,
-									tokensUsed: usage.totalTokens ?? -1,
+									tokensUsed: totalTokens,
 									model: modelId,
 									toolCalls,
 									toolResults,
@@ -165,7 +305,10 @@ export const Route = createFileRoute("/api/chat")({
 									},
 								);
 							} catch (error) {
-								console.error("Error updating Convex:", error);
+								console.error(
+									"[Chat API] Error updating Convex after completion:",
+									error,
+								);
 							}
 						},
 					});
