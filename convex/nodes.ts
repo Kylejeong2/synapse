@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
+import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
 
 // Create a new node
 export const create = mutation({
@@ -16,10 +17,48 @@ export const create = mutation({
       x: v.number(),
       y: v.number(),
     }),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const nodeId = await ctx.db.insert('nodes', args)
-    return nodeId
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const { requestId, ...nodeData } = args
+      const nodeId = await ctx.db.insert('nodes', nodeData)
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.create',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: args.conversationId,
+        document_id: nodeId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      
+      return nodeId
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.create',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: args.conversationId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -44,9 +83,47 @@ async function getAncestorsInternal(ctx: any, nodeId?: Id<'nodes'>) {
 export const getAncestors = query({
   args: {
     nodeId: v.optional(v.id('nodes')),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return getAncestorsInternal(ctx, args.nodeId)
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const result = await getAncestorsInternal(ctx, args.nodeId)
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getAncestors',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'success',
+        records_affected: result.length,
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      
+      return result
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getAncestors',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -54,14 +131,50 @@ export const getAncestors = query({
 export const getChildren = query({
   args: {
     parentId: v.id('nodes'),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const children = await ctx.db
-      .query('nodes')
-      .withIndex('parentId', (q) => q.eq('parentId', args.parentId))
-      .collect()
-
-    return children
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const children = await ctx.db
+        .query('nodes')
+        .withIndex('parentId', (q) => q.eq('parentId', args.parentId))
+        .collect()
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getChildren',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.parentId,
+        status: 'success',
+        records_affected: children.length,
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      
+      return children
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getChildren',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.parentId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -69,9 +182,46 @@ export const getChildren = query({
 export const getNode = query({
   args: {
     nodeId: v.id('nodes'),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.nodeId)
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const node = await ctx.db.get(args.nodeId)
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getNode',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      
+      return node
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getNode',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -83,11 +233,45 @@ export const updatePosition = mutation({
       x: v.number(),
       y: v.number(),
     }),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.nodeId, {
-      position: args.position,
-    })
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const { nodeId, position } = args
+      await ctx.db.patch(nodeId, { position })
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.updatePosition',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: nodeId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.updatePosition',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -100,15 +284,51 @@ export const updateContent = mutation({
     model: v.optional(v.string()),
     toolCalls: v.optional(v.array(v.any())),
     toolResults: v.optional(v.array(v.any())),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.nodeId, {
-      assistantResponse: args.assistantResponse,
-      tokensUsed: args.tokensUsed,
-      model: args.model ?? undefined,
-      toolCalls: args.toolCalls ?? undefined,
-      toolResults: args.toolResults ?? undefined,
-    })
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const { nodeId, assistantResponse, tokensUsed, model, toolCalls, toolResults } = args
+      await ctx.db.patch(nodeId, {
+        assistantResponse,
+        tokensUsed,
+        model: model ?? undefined,
+        toolCalls: toolCalls ?? undefined,
+        toolResults: toolResults ?? undefined,
+      })
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.updateContent',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: nodeId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'nodes.updateContent',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
   },
 })
 
@@ -116,22 +336,60 @@ export const updateContent = mutation({
 export const getContextChain = query({
   args: {
     nodeId: v.id('nodes'),
+    requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const ancestors = await getAncestorsInternal(ctx, args.nodeId)
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+    
+    try {
+      const ancestors = await getAncestorsInternal(ctx, args.nodeId)
 
-    let cumulativeTokens = 0
-    const chain = ancestors.map((node) => {
-      cumulativeTokens += node.tokensUsed
-      return {
-        ...node,
-        cumulativeTokens,
+      let cumulativeTokens = 0
+      const chain = ancestors.map((node) => {
+        cumulativeTokens += node.tokensUsed
+        return {
+          ...node,
+          cumulativeTokens,
+        }
+      })
+
+      const result = {
+        chain,
+        totalTokens: cumulativeTokens,
       }
-    })
-
-    return {
-      chain,
-      totalTokens: cumulativeTokens,
+      
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getContextChain',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'success',
+        records_affected: chain.length,
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      
+      return result
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'query',
+        operation_name: 'nodes.getContextChain',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        document_id: args.nodeId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
     }
   },
 })

@@ -15,6 +15,12 @@ import {
 	type ModelId,
 	type ModelProvider,
 } from "../lib/constants/models";
+import {
+	type ChatRequestLog,
+	generateRequestId,
+	logger,
+	Timer,
+} from "../lib/logger";
 
 /**
  * Token usage object structure from AI SDK
@@ -53,11 +59,15 @@ const convexClient = new ConvexHttpClient(CONVEX_URL);
 function calculateTotalTokens(
 	usage: TokenUsage,
 	modelConfig: ModelConfig,
-): number {
+): {
+	total: number;
+	prompt: number;
+	completion: number;
+	thinking: number;
+} {
 	// Validate usage object exists
 	if (!usage || typeof usage !== "object") {
-		console.warn("[Token Counting] Invalid usage object:", usage);
-		return -1;
+		return { total: -1, prompt: 0, completion: 0, thinking: 0 };
 	}
 
 	const isThinkingModel = modelConfig.thinking;
@@ -76,12 +86,7 @@ function calculateTotalTokens(
 		thinkingTokens < 0 ||
 		(totalTokens !== undefined && totalTokens < 0)
 	) {
-		console.warn("[Token Counting] Negative token count detected:", {
-			promptTokens,
-			completionTokens,
-			thinkingTokens,
-			totalTokens,
-		});
+		return { total: -1, prompt: 0, completion: 0, thinking: 0 };
 	}
 
 	// For thinking models, explicitly calculate total including thinking tokens
@@ -90,47 +95,31 @@ function calculateTotalTokens(
 		if (promptTokens > 0 || completionTokens > 0 || thinkingTokens > 0) {
 			const calculatedTotal = promptTokens + completionTokens + thinkingTokens;
 
-			// Log detailed breakdown for thinking models
-			console.log(
-				`[Token Counting] ${modelConfig.name} (${modelConfig.provider}):`,
-				{
-					promptTokens,
-					completionTokens,
-					thinkingTokens,
-					calculatedTotal,
-					totalTokensFromSDK: totalTokens,
-					usageObject: usage,
-				},
-			);
+			// If SDK provides totalTokens, use the higher value
+			const finalTotal =
+				totalTokens !== undefined
+					? Math.max(calculatedTotal, totalTokens)
+					: calculatedTotal;
 
-			// If SDK provides totalTokens, compare with our calculation
-			if (totalTokens !== undefined) {
-				const difference = Math.abs(calculatedTotal - totalTokens);
-				if (difference > 0) {
-					console.log(
-						`[Token Counting] Difference between calculated and SDK total: ${difference}`,
-					);
-				}
-				// Use SDK total if it's higher (might include other tokens we're not tracking)
-				return Math.max(calculatedTotal, totalTokens);
-			}
-
-			return calculatedTotal;
+			return {
+				total: finalTotal,
+				prompt: promptTokens,
+				completion: completionTokens,
+				thinking: thinkingTokens,
+			};
 		}
 
 		// Fallback to totalTokens if individual counts aren't available
 		if (totalTokens !== undefined && totalTokens >= 0) {
-			console.log(
-				`[Token Counting] ${modelConfig.name}: Using SDK totalTokens: ${totalTokens}`,
-			);
-			return totalTokens;
+			return {
+				total: totalTokens,
+				prompt: promptTokens,
+				completion: completionTokens,
+				thinking: thinkingTokens,
+			};
 		}
 
-		console.warn(
-			`[Token Counting] ${modelConfig.name}: Unable to determine token count`,
-			usage,
-		);
-		return -1;
+		return { total: -1, prompt: 0, completion: 0, thinking: 0 };
 	}
 
 	// For non-thinking models, use standard calculation
@@ -138,24 +127,30 @@ function calculateTotalTokens(
 		const calculatedTotal = promptTokens + completionTokens;
 
 		// If SDK provides totalTokens, prefer it (might be more accurate)
-		if (totalTokens !== undefined && totalTokens >= 0) {
-			return totalTokens;
-		}
+		const finalTotal =
+			totalTokens !== undefined && totalTokens >= 0
+				? totalTokens
+				: calculatedTotal;
 
-		return calculatedTotal;
+		return {
+			total: finalTotal,
+			prompt: promptTokens,
+			completion: completionTokens,
+			thinking: 0,
+		};
 	}
 
 	// Final fallback to totalTokens
 	if (totalTokens !== undefined && totalTokens >= 0) {
-		return totalTokens;
+		return {
+			total: totalTokens,
+			prompt: promptTokens,
+			completion: completionTokens,
+			thinking: 0,
+		};
 	}
 
-	// If we can't determine token count, log warning and return -1
-	console.warn(
-		"[Token Counting] Unable to determine token count from usage object:",
-		usage,
-	);
-	return -1;
+	return { total: -1, prompt: 0, completion: 0, thinking: 0 };
 }
 
 /**
@@ -164,7 +159,6 @@ function calculateTotalTokens(
 function getModelInstance(modelId: ModelId): LanguageModel {
 	const config = MODELS[modelId];
 	if (!config) {
-		console.warn(`Unknown model: ${modelId}, falling back to default`);
 		return openai(DEFAULT_MODEL);
 	}
 
@@ -180,7 +174,6 @@ function getModelInstance(modelId: ModelId): LanguageModel {
 		case "google":
 			return google(modelId);
 		default:
-			console.warn(`Unknown provider: ${provider}, falling back to OpenAI`);
 			return openai(modelId);
 	}
 }
@@ -193,6 +186,18 @@ export const Route = createFileRoute("/api/chat")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
+				// Initialize request tracking
+				const requestId = generateRequestId();
+				const timer = new Timer();
+				const logContext: Partial<ChatRequestLog> = {
+					request_id: requestId,
+					timestamp: Date.now(),
+					service_name: "synapse-api",
+					environment: import.meta.env.DEV ? "development" : "production",
+					vite_mode: import.meta.env.MODE,
+					streaming: true,
+				};
+
 				try {
 					const body = await request.json();
 					const {
@@ -210,9 +215,11 @@ export const Route = createFileRoute("/api/chat")({
 
 					const modelConfig = MODELS[modelId];
 
-					console.log(
-						`[Chat API] Using model: ${modelId} (provider: ${modelConfig.provider})`,
-					);
+					// Add model info to log context
+					logContext.model = modelId;
+					logContext.model_provider = modelConfig.provider;
+					logContext.conversation_id = conversationId;
+					logContext.parent_node_id = nodeId;
 
 					// Extract the latest user message
 					const lastMessage = incomingMessages[incomingMessages.length - 1];
@@ -220,7 +227,10 @@ export const Route = createFileRoute("/api/chat")({
 						.map((p: { text?: string }) => p.text || "")
 						.join("");
 
+					logContext.prompt_length = prompt.length;
+
 					// 1. Fetch context from Convex if nodeId exists
+					timer.mark("convex_query_start");
 					let ancestors: Array<{
 						userPrompt: string;
 						assistantResponse: string;
@@ -232,6 +242,13 @@ export const Route = createFileRoute("/api/chat")({
 							nodeId: nodeId as Id<"nodes">,
 						});
 					}
+					timer.mark("convex_query_end");
+
+					logContext.ancestor_count = ancestors.length;
+					logContext.convex_query_duration_ms = timer.duration(
+						"convex_query_start",
+						"convex_query_end",
+					);
 
 					// 2. Build messages array
 					const messages: Array<{
@@ -258,11 +275,17 @@ export const Route = createFileRoute("/api/chat")({
 						y: Math.random() * 100,
 					};
 
+					logContext.depth = depth;
+					logContext.is_fork = Boolean(nodeId);
+					logContext.is_root = !nodeId;
+
 					// 4. Stream from the model (throttled updates to Convex for near-realtime UI)
 					let newNodeId: Id<"nodes">;
 
 					// Get the model instance based on provider
 					const modelInstance = getModelInstance(modelId);
+
+					timer.mark("model_request_start");
 
 					// Start model streaming and node creation in parallel
 					const modelPromise = streamText({
@@ -273,6 +296,8 @@ export const Route = createFileRoute("/api/chat")({
 						temperature: modelConfig.thinking ? undefined : 0.7, // Thinking models often don't support temperature
 						async onFinish({ text, usage, response }) {
 							try {
+								timer.mark("model_complete");
+
 								// Extract tool data from response if available
 								const responseData = response as unknown as {
 									toolCalls?: unknown[];
@@ -282,16 +307,24 @@ export const Route = createFileRoute("/api/chat")({
 								const toolResults = responseData.toolResults || undefined;
 
 								// Calculate total tokens including thinking tokens for thinking models
-								const totalTokens = calculateTotalTokens(
+								const tokenData = calculateTotalTokens(
 									usage as TokenUsage,
 									modelConfig,
 								);
 
+								// Update log context with response data
+								logContext.response_length = text.length;
+								logContext.tokens_prompt = tokenData.prompt;
+								logContext.tokens_completion = tokenData.completion;
+								logContext.tokens_thinking = tokenData.thinking || undefined;
+								logContext.tokens_total = tokenData.total;
+
+								timer.mark("convex_mutation_start");
 								// Final patch with complete text, token usage, and tool data
 								await convexClient.mutation(api.nodes.updateContent, {
 									nodeId: newNodeId as Id<"nodes">,
 									assistantResponse: text,
-									tokensUsed: totalTokens,
+									tokensUsed: tokenData.total,
 									model: modelId,
 									toolCalls,
 									toolResults,
@@ -304,11 +337,29 @@ export const Route = createFileRoute("/api/chat")({
 										conversationId: conversationId as Id<"conversations">,
 									},
 								);
-							} catch (error) {
-								console.error(
-									"[Chat API] Error updating Convex after completion:",
-									error,
+								timer.mark("convex_mutation_end");
+
+								logContext.convex_mutation_duration_ms = timer.duration(
+									"convex_mutation_start",
+									"convex_mutation_end",
 								);
+								logContext.duration_ms = timer.elapsed();
+								logContext.status = "success";
+								logContext.node_id = newNodeId;
+
+								// Emit wide event log
+								logger.logChatRequest(logContext as ChatRequestLog);
+							} catch (error) {
+								logContext.status = "error";
+								logContext.duration_ms = timer.elapsed();
+								logContext.error_type =
+									error instanceof Error ? error.name : "Unknown";
+								logContext.error_message =
+									error instanceof Error ? error.message : String(error);
+								logContext.error_stack =
+									error instanceof Error ? error.stack : undefined;
+
+								logger.logChatRequest(logContext as ChatRequestLog);
 							}
 						},
 					});
@@ -343,6 +394,12 @@ export const Route = createFileRoute("/api/chat")({
 					]);
 					newNodeId = _newNodeId;
 
+					timer.mark("model_ttfb");
+					logContext.model_ttfb_ms = timer.duration(
+						"model_request_start",
+						"model_ttfb",
+					);
+
 					// Tap into the text stream to patch partial content to Convex
 					const [tapStream, clientStream] = result.textStream.tee();
 					(async () => {
@@ -368,8 +425,8 @@ export const Route = createFileRoute("/api/chat")({
 									}
 								}
 							}
-						} catch (e) {
-							console.error("Error reading text stream:", e);
+						} catch (_e) {
+							// Stream read errors are logged in onFinish
 						} finally {
 							reader.releaseLock();
 						}
@@ -380,11 +437,23 @@ export const Route = createFileRoute("/api/chat")({
 						headers: { "Content-Type": "text/plain; charset=utf-8" },
 					});
 				} catch (error) {
-					console.error("Chat API error:", error);
+					logContext.status = "error";
+					logContext.duration_ms = timer.elapsed();
+					logContext.error_type =
+						error instanceof Error ? error.name : "Unknown";
+					logContext.error_message =
+						error instanceof Error ? error.message : String(error);
+					logContext.error_stack =
+						error instanceof Error ? error.stack : undefined;
+
+					// Log the error with full context
+					logger.logChatRequest(logContext as ChatRequestLog);
+
 					return new Response(
 						JSON.stringify({
 							error: "Failed to process chat request",
 							details: error instanceof Error ? error.message : String(error),
+							request_id: requestId,
 						}),
 						{
 							status: 500,
