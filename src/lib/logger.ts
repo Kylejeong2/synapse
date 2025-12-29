@@ -1,6 +1,5 @@
 /**
  * Wide Event Logging System
- * Based on principles from loggingsucks.com
  *
  * Emits structured, context-rich log events instead of scattered console.log statements.
  * Each log is a "wide event" containing all context needed for debugging.
