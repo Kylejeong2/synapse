@@ -18,8 +18,11 @@ export const env = createEnv({
 		VITE_APP_TITLE: z.string().min(1).optional(),
 		VITE_CONVEX_URL: z.string().url(),
 		VITE_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+		// Logging configuration
 		VITE_LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
 		VITE_LOG_FORMAT: z.enum(["json", "pretty"]).optional(),
+		// Sample rate for success logs (0-1). Default: 1.0 in dev, 0.1 in prod
+		VITE_LOG_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
 	},
 
 	/**

@@ -27,6 +27,7 @@ import {
 	useCreateConversation,
 	useDeleteConversation,
 } from "@/hooks/useConversation";
+import { log } from "@/lib/logger";
 
 export const Route = createFileRoute("/")({
 	component: ConversationsPage,
@@ -54,7 +55,11 @@ function ConversationsPage() {
 				search: { fromNode: undefined },
 			});
 		} catch (error) {
-			console.error("Failed to create conversation:", error);
+			log.error(
+				"Failed to create conversation",
+				error instanceof Error ? error : undefined,
+				{ component: "ConversationsPage" },
+			);
 		} finally {
 			setIsCreating(false);
 		}
@@ -68,7 +73,11 @@ function ConversationsPage() {
 		try {
 			await deleteConversation({ conversationId });
 		} catch (error) {
-			console.error("Failed to delete conversation:", error);
+			log.error(
+				"Failed to delete conversation",
+				error instanceof Error ? error : undefined,
+				{ conversationId, component: "ConversationsPage" },
+			);
 		}
 	};
 
