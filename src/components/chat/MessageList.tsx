@@ -1,5 +1,5 @@
 import type { UIMessage } from "@ai-sdk/react";
-import { memo, useEffect, useLayoutEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -127,77 +127,75 @@ export function MessageList({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const prevMessageCountRef = useRef(messages.length);
-	const prevLastMessageTextRef = useRef<string>("");
 
-	// Track message changes for auto-scroll
-	const lastMessage = messages[messages.length - 1];
-	const lastMessageText =
-		lastMessage?.parts
-			?.filter((p) => p.type === "text")
-			.map((p) => (p as { text: string }).text)
-			.join("") || "";
+	// Track if user has intervened during current streaming message
+	const userIntervenedRef = useRef(false);
 
-	// Track scroll position to preserve during re-renders
-	const savedScrollRef = useRef<{ top: number; height: number } | null>(null);
+	// Scroll to bottom helper - use 'auto' (instant) to avoid scroll event issues
+	const scrollToBottom = useCallback(() => {
+		if (!scrollRef.current) return;
+		scrollRef.current.scrollTo({
+			top: scrollRef.current.scrollHeight,
+			behavior: "auto",
+		});
+	}, []);
 
-	// Save scroll position before re-render (layout effect runs synchronously)
-	useLayoutEffect(() => {
-		const scrollElement = scrollRef.current;
-		if (!scrollElement) return;
+	// Detect ONLY user-initiated scroll attempts via wheel/touch
+	// These events never fire on programmatic scrolls
+	const handleUserScrollAttempt = useCallback(() => {
+		if (isLoading) {
+			userIntervenedRef.current = true;
+		}
+	}, [isLoading]);
 
-		// Save current position for next render
-		savedScrollRef.current = {
-			top: scrollElement.scrollTop,
-			height: scrollElement.scrollHeight,
+	// Listen for wheel and touch events (user-only, never fires on programmatic scroll)
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+
+		el.addEventListener("wheel", handleUserScrollAttempt, { passive: true });
+		el.addEventListener("touchstart", handleUserScrollAttempt, {
+			passive: true,
+		});
+
+		return () => {
+			el.removeEventListener("wheel", handleUserScrollAttempt);
+			el.removeEventListener("touchstart", handleUserScrollAttempt);
 		};
-	});
+	}, [handleUserScrollAttempt]);
 
 	// Initial scroll on mount
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (scrollRef.current && messages.length > 0) {
-			requestAnimationFrame(() => {
-				if (scrollRef.current) {
-					scrollRef.current.scrollTo({
-						top: scrollRef.current.scrollHeight,
-						behavior: "auto",
-					});
-				}
-			});
+			scrollToBottom();
 		}
-	}, [messages.length]);
+		// Only run on mount
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [messages.length, scrollToBottom]);
 
-	const prevIsLoadingRef = useRef(isLoading);
-
-	// Auto-scroll when messages change during streaming
+	// Reset intervention flag and scroll to bottom when new message is added
 	useEffect(() => {
-		if (!scrollRef.current) return;
-
-		// Check if messages actually changed
 		const messageCountChanged = messages.length !== prevMessageCountRef.current;
-		const messageContentChanged =
-			lastMessageText !== prevLastMessageTextRef.current;
-		const loadingStarted = !prevIsLoadingRef.current && isLoading;
 
-		// Update refs
-		prevMessageCountRef.current = messages.length;
-		prevLastMessageTextRef.current = lastMessageText;
-		prevIsLoadingRef.current = isLoading ?? false;
-
-		// Auto-scroll when loading/streaming and messages change
-		if (
-			isLoading &&
-			(messageCountChanged || messageContentChanged || loadingStarted)
-		) {
+		if (messageCountChanged) {
+			// New message node added - reset user intervention flag
+			userIntervenedRef.current = false;
+			prevMessageCountRef.current = messages.length;
 			requestAnimationFrame(() => {
-				if (scrollRef.current) {
-					scrollRef.current.scrollTo({
-						top: scrollRef.current.scrollHeight,
-						behavior: "smooth",
-					});
-				}
+				scrollToBottom();
 			});
 		}
-	}, [messages, isLoading, lastMessageText]);
+	}, [messages.length, scrollToBottom]);
+
+	// Auto-scroll during streaming (only if user hasn't intervened)
+	useEffect(() => {
+		if (!isLoading || userIntervenedRef.current) return;
+
+		// Scroll to bottom on content updates during streaming
+		requestAnimationFrame(() => {
+			scrollToBottom();
+		});
+	}, [isLoading, scrollToBottom]);
 
 	if (messages.length === 0 && !isLoading) {
 		return (
