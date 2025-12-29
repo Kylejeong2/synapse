@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo } from "react";
 import "@xyflow/react/dist/style.css";
 import { useTreeLayout } from "@/hooks/useTreeLayout";
+import { log } from "@/lib/logger";
 import { NodeCard } from "./NodeCard";
 
 interface ConversationTreeProps {
@@ -64,9 +65,9 @@ export function ConversationTree({
 
 	const onNodeClick = useCallback(
 		(_event: React.MouseEvent, node: { id: string }) => {
-			console.log("Node clicked:", node);
+			log.debug("Node clicked", { nodeId: node.id, conversationId });
 		},
-		[],
+		[conversationId],
 	);
 
 	if (dbNodes.length === 0) {

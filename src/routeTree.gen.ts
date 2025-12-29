@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TreeIdRouteImport } from './routes/tree.$id'
+import { Route as LogsIdRouteImport } from './routes/logs.$id'
 import { Route as ChatIdRouteImport } from './routes/chat.$id'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const TreeIdRoute = TreeIdRouteImport.update({
   id: '/tree/$id',
   path: '/tree/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogsIdRoute = LogsIdRouteImport.update({
+  id: '/logs/$id',
+  path: '/logs/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIdRoute = ChatIdRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$id': typeof ChatIdRoute
+  '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$id': typeof ChatIdRoute
+  '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$id': typeof ChatIdRoute
+  '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/chat/$id' | '/tree/$id'
+  fullPaths: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/chat/$id' | '/tree/$id'
-  id: '__root__' | '/' | '/api/chat' | '/chat/$id' | '/tree/$id'
+  to: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  id: '__root__' | '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiChatRoute: typeof ApiChatRoute
   ChatIdRoute: typeof ChatIdRoute
+  LogsIdRoute: typeof LogsIdRoute
   TreeIdRoute: typeof TreeIdRoute
 }
 
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/tree/$id'
       fullPath: '/tree/$id'
       preLoaderRoute: typeof TreeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logs/$id': {
+      id: '/logs/$id'
+      path: '/logs/$id'
+      fullPath: '/logs/$id'
+      preLoaderRoute: typeof LogsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/$id': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiChatRoute: ApiChatRoute,
   ChatIdRoute: ChatIdRoute,
+  LogsIdRoute: LogsIdRoute,
   TreeIdRoute: TreeIdRoute,
 }
 export const routeTree = rootRouteImport

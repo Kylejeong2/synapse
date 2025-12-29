@@ -24,6 +24,7 @@ import {
 	useCreateConversation,
 } from "@/hooks/useConversation";
 import { HeaderUser } from "@/integrations/clerk/header-user";
+import { log } from "@/lib/logger";
 
 export function AppSidebar() {
 	const { user } = useUser();
@@ -46,7 +47,11 @@ export function AppSidebar() {
 				search: { fromNode: undefined },
 			});
 		} catch (error) {
-			console.error("Failed to create conversation:", error);
+			log.error(
+				"Failed to create conversation",
+				error instanceof Error ? error : undefined,
+				{ component: "AppSidebar" },
+			);
 		} finally {
 			setIsCreating(false);
 		}
