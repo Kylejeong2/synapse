@@ -8,6 +8,16 @@ export interface ModelConfig {
 
 export const MODELS = {
 	// OpenAI
+	"gpt-5.2-2025-12-11": {
+		provider: "openai",
+		name: "GPT-5.2",
+		thinking: false,
+	},
+	"gpt-5.2-thinking-2025-12-11": {
+		provider: "openai",
+		name: "GPT-5.2 Thinking",
+		thinking: true,
+	},
 	"gpt-5.1-2025-11-13": {
 		provider: "openai",
 		name: "GPT-5.1",
@@ -44,6 +54,11 @@ export const MODELS = {
 		name: "Claude Sonnet 4.5",
 		thinking: false,
 	},
+	"claude-sonnet-4-5-thinking-20250929": {
+		provider: "anthropic",
+		name: "Claude Sonnet 4.5 Extended Thinking",
+		thinking: true,
+	},
 	"claude-haiku-4-5-20251001": {
 		provider: "anthropic",
 		name: "Claude Haiku 4.5",
@@ -53,6 +68,11 @@ export const MODELS = {
 		provider: "anthropic",
 		name: "Claude Opus 4.5",
 		thinking: false,
+	},
+	"claude-opus-4-5-thinking-20251101": {
+		provider: "anthropic",
+		name: "Claude Opus 4.5 Extended Thinking",
+		thinking: true,
 	},
 	// xAI
 	"grok-4-1-fast-reasoning": {
