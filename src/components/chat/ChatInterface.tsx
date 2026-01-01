@@ -1,6 +1,8 @@
 import { type UIMessage, useChat } from "@ai-sdk/react";
+import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
 import { TextStreamChatTransport } from "ai";
+import { useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -10,6 +12,7 @@ import {
 	useUpdateDefaultModel,
 } from "@/hooks/useConversation";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/constants/models";
+import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { FlowMiniMap } from "./FlowMiniMap";
 import { InputBar } from "./InputBar";
@@ -30,9 +33,14 @@ export function ChatInterface({
 	forkingFromPrompt,
 }: ChatInterfaceProps) {
 	const navigate = useNavigate();
+	const { user } = useUser();
 	const conversation = useConversation(conversationId);
 	const ancestors = useNodeAncestors(fromNodeId ?? null);
 	const updateDefaultModel = useUpdateDefaultModel();
+	const usageStats = useQuery(
+		api.rateLimiting.getUsageStats,
+		user?.id ? { userId: user.id } : "skip",
+	);
 
 	// Model state - initialize from conversation's defaultModel or fallback to default
 	const [selectedModel, setSelectedModel] = useState<ModelId>(DEFAULT_MODEL);
@@ -241,6 +249,53 @@ export function ChatInterface({
 						onModelChange={handleModelChange}
 					/>
 				</div>
+				{/* Usage Indicator */}
+				{usageStats && user?.id && (
+					<div className="px-4 pb-2">
+						{usageStats.tier === "paid" ? (
+							<div className="flex items-center gap-4 text-xs text-muted-foreground">
+								<div className="flex items-center gap-1">
+									<span>Credit:</span>
+									<span className="font-medium">
+										${usageStats.remainingCredit.toFixed(2)} / $
+										{usageStats.includedCredit.toFixed(2)}
+									</span>
+								</div>
+								{usageStats.overageAmount > 0 && (
+									<div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500">
+										<span>Overage:</span>
+										<span className="font-medium">
+											${usageStats.overageAmount.toFixed(2)}
+										</span>
+									</div>
+								)}
+								<div className="flex items-center gap-1">
+									<span>Tokens:</span>
+									<span className="font-medium">
+										{usageStats.tokensUsed.toLocaleString()}
+									</span>
+								</div>
+							</div>
+						) : (
+							<div className="flex items-center gap-4 text-xs text-muted-foreground">
+								<div className="flex items-center gap-1">
+									<span>Tokens:</span>
+									<span className="font-medium">
+										{usageStats.tokensUsed.toLocaleString()} /{" "}
+										{usageStats.maxTokens.toLocaleString()}
+									</span>
+								</div>
+								<div className="flex items-center gap-1">
+									<span>Conversations:</span>
+									<span className="font-medium">
+										{usageStats.conversationsUsed} /{" "}
+										{usageStats.maxConversations}
+									</span>
+								</div>
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 
 			{/* Messages */}

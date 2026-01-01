@@ -7,6 +7,7 @@ import { type LanguageModel, streamText } from "ai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { calculateTokenCost } from "../lib/billing/tokenPricing";
 import { SYSTEM_PROMPT } from "../lib/constants";
 import {
 	DEFAULT_MODEL,
@@ -107,8 +108,108 @@ export const Route = createFileRoute("/api/chat")({
 
 					logContext.prompt_length = prompt.length;
 
-					// 1. Fetch context from Convex if nodeId exists
+					// 0. Get conversation to extract userId and check limits
 					timer.mark("convex_query_start");
+					const conversation = await convexClient.query(
+						api.conversations.getConversation,
+						{
+							conversationId: conversationId as Id<"conversations">,
+						},
+					);
+
+					if (!conversation) {
+						return new Response(
+							JSON.stringify({ error: "Conversation not found" }),
+							{
+								status: 404,
+								headers: { "Content-Type": "application/json" },
+							},
+						);
+					}
+
+					const userId = conversation.userId;
+
+					// Check free tier token limits before processing
+					const isFreeTier = await convexClient.query(
+						api.rateLimiting.isFreeTier,
+						{ userId },
+					);
+
+					if (isFreeTier) {
+						// Check cumulative tokens for this conversation
+						const conversationTokens = await convexClient.query(
+							api.usage.getConversationTokenTotal,
+							{
+								conversationId: conversationId as Id<"conversations">,
+							},
+						);
+
+						if (conversationTokens >= 20_000) {
+							return new Response(
+								JSON.stringify({
+									error: "Free tier limit exceeded",
+									message:
+										"You've reached the 20k token limit for free tier. Please upgrade to continue.",
+									upgradeRequired: true,
+								}),
+								{
+									status: 403,
+									headers: { "Content-Type": "application/json" },
+								},
+							);
+						}
+					}
+
+					// Check rate limits and token credit
+					const rateLimitCheck = await convexClient.query(
+						api.rateLimiting.checkRateLimit,
+						{ userId },
+					);
+
+					if (!rateLimitCheck.allowed) {
+						return new Response(
+							JSON.stringify({
+								error: "Rate limit exceeded",
+								reason: rateLimitCheck.reason,
+							}),
+							{
+								status: 429,
+								headers: { "Content-Type": "application/json" },
+							},
+						);
+					}
+
+					// Estimate tokens for this request (rough estimate: prompt length / 4)
+					const estimatedTokens = Math.ceil(prompt.length / 4) + 1000; // Add buffer for response
+					const tokenLimitCheck = await convexClient.query(
+						api.rateLimiting.checkTokenLimit,
+						{ userId, requestedTokens: estimatedTokens },
+					);
+
+					if (!tokenLimitCheck.allowed) {
+						return new Response(
+							JSON.stringify({
+								error: "Token limit exceeded",
+								reason: tokenLimitCheck.reason,
+								...(tokenLimitCheck.reason === "credit_exceeded"
+									? {
+											remainingCredit: tokenLimitCheck.remainingCredit,
+											estimatedCost: tokenLimitCheck.estimatedCost,
+										}
+									: {
+											tokensUsed: tokenLimitCheck.tokensUsed,
+											maxTokens: tokenLimitCheck.maxTokens,
+										}),
+								upgradeRequired: true,
+							}),
+							{
+								status: 403,
+								headers: { "Content-Type": "application/json" },
+							},
+						);
+					}
+
+					// 1. Fetch context from Convex if nodeId exists
 					let ancestors: Array<{
 						userPrompt: string;
 						assistantResponse: string;
@@ -190,6 +291,14 @@ export const Route = createFileRoute("/api/chat")({
 									modelConfig,
 								);
 
+								// Calculate token cost
+								const tokenCost = calculateTokenCost(
+									modelId,
+									tokenData.prompt,
+									tokenData.completion,
+									tokenData.thinking || 0,
+								);
+
 								// Update log context with response data
 								logContext.response_length = text.length;
 								logContext.tokens_prompt = tokenData.prompt;
@@ -206,6 +315,16 @@ export const Route = createFileRoute("/api/chat")({
 									model: modelId,
 									toolCalls,
 									toolResults,
+								});
+
+								// Record usage
+								await convexClient.mutation(api.usage.recordUsage, {
+									userId,
+									conversationId: conversationId as Id<"conversations">,
+									nodeId: newNodeId as Id<"nodes">,
+									model: modelId,
+									tokensUsed: tokenData.total,
+									tokenCost,
 								});
 
 								// Update last accessed time

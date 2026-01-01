@@ -9,12 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as BillingRouteImport } from './routes/billing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TreeIdRouteImport } from './routes/tree.$id'
 import { Route as LogsIdRouteImport } from './routes/logs.$id'
 import { Route as ChatIdRouteImport } from './routes/chat.$id'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
+import { Route as ApiCreateCheckoutRouteImport } from './routes/api.create-checkout'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -35,6 +49,16 @@ const ChatIdRoute = ChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCreateCheckoutRoute = ApiCreateCheckoutRouteImport.update({
+  id: '/api/create-checkout',
+  path: '/api/create-checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -43,14 +67,22 @@ const ApiChatRoute = ApiChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/billing': typeof BillingRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/billing': typeof BillingRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
@@ -58,22 +90,58 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/billing': typeof BillingRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  fullPaths:
+    | '/'
+    | '/billing'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
-  id: '__root__' | '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  to:
+    | '/'
+    | '/billing'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/billing'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BillingRoute: typeof BillingRoute
+  PricingRoute: typeof PricingRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCreateCheckoutRoute: typeof ApiCreateCheckoutRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ChatIdRoute: typeof ChatIdRoute
   LogsIdRoute: typeof LogsIdRoute
   TreeIdRoute: typeof TreeIdRoute
@@ -81,6 +149,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -109,6 +191,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/create-checkout': {
+      id: '/api/create-checkout'
+      path: '/api/create-checkout'
+      fullPath: '/api/create-checkout'
+      preLoaderRoute: typeof ApiCreateCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -121,7 +217,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BillingRoute: BillingRoute,
+  PricingRoute: PricingRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCreateCheckoutRoute: ApiCreateCheckoutRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ChatIdRoute: ChatIdRoute,
   LogsIdRoute: LogsIdRoute,
   TreeIdRoute: TreeIdRoute,
