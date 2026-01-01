@@ -24,6 +24,38 @@ export const create = mutation({
     const timer = new ConvexTimer()
     
     try {
+      // Get conversation to check free tier status
+      const conversation = await ctx.db.get(args.conversationId)
+      if (!conversation) {
+        throw new Error('Conversation not found')
+      }
+
+      // Check if user is free tier
+      const subscription = await ctx.db
+        .query('subscriptions')
+        .withIndex('userId', (q) => q.eq('userId', conversation.userId))
+        .filter((q) => q.eq(q.field('status'), 'active'))
+        .first()
+
+      if (!subscription && conversation.isFreeTier) {
+        // Free tier: Check total token usage
+        const freeTierUsage = await ctx.db
+          .query('free_tier_usage')
+          .withIndex('userId', (q) => q.eq('userId', conversation.userId))
+          .collect()
+
+        const totalTokensUsed = freeTierUsage.reduce(
+          (sum, usage) => sum + usage.tokensUsed,
+          0,
+        )
+
+        if (totalTokensUsed + args.tokensUsed > 20_000) {
+          throw new Error(
+            'Free tier token limit exceeded. You have reached the 20k token limit. Please upgrade to continue.',
+          )
+        }
+      }
+
       const { requestId, ...nodeData } = args
       const nodeId = await ctx.db.insert('nodes', nodeData)
       

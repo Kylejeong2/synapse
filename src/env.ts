@@ -5,7 +5,13 @@ export const env = createEnv({
 	server: {
 		SERVER_URL: z.string().url().optional(),
 		OPENAI_API_KEY: z.string().min(1),
+		ANTHROPIC_API_KEY: z.string().min(1).optional(),
+		GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
 		MODEL_NAME: z.string().min(1).optional(),
+		STRIPE_SECRET_KEY: z.string().min(1),
+		STRIPE_WEBHOOK_SECRET: z.string().min(1),
+		STRIPE_PRICE_ID_SUBSCRIPTION: z.string().min(1),
+		STRIPE_METER_ID_TOKEN_USAGE: z.string().min(1),
 	},
 
 	/**
@@ -28,8 +34,12 @@ export const env = createEnv({
 	/**
 	 * What object holds the environment variables at runtime. This is usually
 	 * `process.env` or `import.meta.env`.
+	 * In TanStack Start, server routes use `process.env` while client uses `import.meta.env`.
 	 */
-	runtimeEnv: import.meta.env,
+	runtimeEnv: {
+		...process.env,
+		...import.meta.env,
+	},
 
 	/**
 	 * By default, this library will feed the environment variables directly to
