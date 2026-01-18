@@ -30,4 +30,10 @@ export default defineSchema({
   })
     .index('conversationId', ['conversationId'])
     .index('parentId', ['parentId']),
+
+  waitlist: defineTable({
+    email: v.string(),
+    createdAt: v.number(),
+  })
+    .index('email', ['email']),
 })

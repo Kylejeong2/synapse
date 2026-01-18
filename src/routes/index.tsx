@@ -1,7 +1,8 @@
-import { SignIn, useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react"; // TODO: add sign in component back
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,7 +23,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
+	useAddToWaitlist,
 	useConversations,
 	useCreateConversation,
 	useDeleteConversation,
@@ -32,6 +35,117 @@ import { log } from "@/lib/logger";
 export const Route = createFileRoute("/")({
 	component: ConversationsPage,
 });
+
+function WaitlistPage() {
+	const [email, setEmail] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isSubmitted, setIsSubmitted] = useState(false);
+	const addToWaitlist = useAddToWaitlist();
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!email.trim()) {
+			toast.error("Please enter your email");
+			return;
+		}
+
+		setIsSubmitting(true);
+		try {
+			await addToWaitlist({ email: email.trim() });
+			setIsSubmitted(true);
+			setEmail("");
+			toast.success("You're on the waitlist! We'll notify you soon.");
+		} catch (error) {
+			log.error(
+				"Failed to add email to waitlist",
+				error instanceof Error ? error : undefined,
+				{ component: "WaitlistPage" },
+			);
+			toast.error(
+				error instanceof Error && error.message.includes("Invalid email")
+					? "Please enter a valid email address"
+					: "Something went wrong. Please try again.",
+			);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	return (
+		<div className="flex flex-col items-center justify-center min-h-screen bg-background">
+			<div className="relative w-full max-w-6xl px-4 py-16">
+				{/* Hero Section */}
+				<div className="text-center mb-20 space-y-6">
+					<h1 className="text-7xl font-bold tracking-tight mb-4">
+						<span className="text-foreground">Synapse</span>
+					</h1>
+					<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+						Create branching conversations and explore ideas with AI
+					</p>
+				</div>
+
+				{/* Waitlist Card */}
+				<Card className="w-full max-w-md mx-auto border-2 border-primary/20 shadow-xl bg-card/80 backdrop-blur mb-8">
+					<CardHeader className="text-center space-y-2 pb-6">
+						<CardTitle className="text-2xl">Join the Waitlist</CardTitle>
+						<CardDescription className="text-base">
+							Be among the first to experience Synapse
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="pb-8">
+						{isSubmitted ? (
+							<div className="text-center space-y-4">
+								<div className="text-green-600 dark:text-green-400 text-sm font-medium">
+									You're on the list! We'll notify you when Synapse is ready.
+								</div>
+								<Button
+									variant="outline"
+									onClick={() => setIsSubmitted(false)}
+									className="w-full"
+								>
+									Add Another Email
+								</Button>
+							</div>
+						) : (
+							<form onSubmit={handleSubmit} className="space-y-4">
+								<Input
+									type="email"
+									placeholder="Enter your email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									disabled={isSubmitting}
+									required
+									className="w-full"
+								/>
+								<Button
+									type="submit"
+									disabled={isSubmitting || !email.trim()}
+									className="w-full"
+									size="lg"
+								>
+									{isSubmitting ? "Joining..." : "Join Waitlist"}
+								</Button>
+							</form>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Sign In Section */}
+				{/* <div className="text-center mt-8">
+					<p className="text-sm text-muted-foreground mb-4">
+						Already have access?
+					</p>
+					<Card className="w-full max-w-md mx-auto border border-border/50">
+						<CardContent className="pt-6">
+							<SignIn />
+						</CardContent>
+					</Card>
+				</div> */}
+			</div>
+		</div>
+	);
+}
 
 function ConversationsPage() {
 	const { user, isSignedIn, isLoaded } = useUser();
@@ -104,31 +218,7 @@ function ConversationsPage() {
 	}
 
 	if (!isSignedIn) {
-		return (
-			<div className="flex flex-col items-center justify-center min-h-screen bg-background">
-				<div className="relative w-full max-w-6xl px-4 py-16">
-					{/* Hero Section */}
-					<div className="text-center mb-20 space-y-6">
-						<h1 className="text-7xl font-bold tracking-tight mb-4">
-							<span className="text-foreground">Synapse</span>
-						</h1>
-					</div>
-
-					{/* Sign In Card */}
-					<Card className="w-full max-w-md mx-auto border-2 border-primary/20 shadow-xl bg-card/80 backdrop-blur mb-24">
-						<CardHeader className="text-center space-y-2 pb-6">
-							<CardTitle className="text-2xl">Get Started</CardTitle>
-							<CardDescription className="text-base">
-								Sign in to start creating conversation trees
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="pb-8">
-							<SignIn />
-						</CardContent>
-					</Card>
-				</div>
-			</div>
-		);
+		return <WaitlistPage />;
 	}
 
 	return (

@@ -66,3 +66,8 @@ export function useContextChain(nodeId: Id<"nodes"> | null) {
 export function useUpdateNodePosition() {
 	return useMutation(api.nodes.updatePosition);
 }
+
+/** Returns mutation to add an email to the waitlist. */
+export function useAddToWaitlist() {
+	return useMutation(api.waitlist.addEmail);
+}
