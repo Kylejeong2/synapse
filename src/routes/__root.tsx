@@ -1,4 +1,3 @@
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -6,11 +5,9 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Toaster } from "@/components/ui/sonner";
 import ClerkProvider from "../integrations/clerk/provider";
 import ConvexProvider from "../integrations/convex/provider";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
 
 /**
@@ -81,18 +78,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					<ClerkProvider>
 						{children}
 						<Toaster />
-						<TanStackDevtools
-							config={{
-								position: "bottom-right",
-							}}
-							plugins={[
-								{
-									name: "Tanstack Router",
-									render: <TanStackRouterDevtoolsPanel />,
-								},
-								TanStackQueryDevtools,
-							]}
-						/>
 					</ClerkProvider>
 				</ConvexProvider>
 				<Scripts />
