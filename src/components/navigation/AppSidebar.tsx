@@ -105,36 +105,42 @@ export function AppSidebar() {
 					<SidebarGroupContent>
 						<ScrollArea className="h-[calc(100vh-300px)]">
 							<SidebarMenu>
-								{conversations?.map((conversation: Doc<"conversations">) => (
-									<SidebarMenuItem key={conversation._id}>
-										<SidebarMenuButton
-											asChild
-											className="flex items-center justify-between"
-										>
-											<button
-												type="button"
-												onClick={() =>
-													navigate({
-														to: "/chat/$id",
-														params: { id: conversation._id },
-														search: { fromNode: undefined },
-													})
-												}
+								{conversations?.map(
+									(
+										conversation: Doc<"conversations"> & { nodeCount: number },
+									) => (
+										<SidebarMenuItem key={conversation._id}>
+											<SidebarMenuButton
+												asChild
+												className="flex items-center justify-between"
 											>
-												<div className="flex items-center gap-2 flex-1 min-w-0">
-													<MessageSquare className="h-4 w-4 shrink-0" />
-													<span className="truncate">{conversation.title}</span>
-												</div>
-												<Badge
-													variant="secondary"
-													className="text-xs ml-2 shrink-0"
+												<button
+													type="button"
+													onClick={() =>
+														navigate({
+															to: "/chat/$id",
+															params: { id: conversation._id },
+															search: { fromNode: undefined },
+														})
+													}
 												>
-													{conversation.nodeCount}
-												</Badge>
-											</button>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								))}
+													<div className="flex items-center gap-2 flex-1 min-w-0">
+														<MessageSquare className="h-4 w-4 shrink-0" />
+														<span className="truncate">
+															{conversation.title}
+														</span>
+													</div>
+													<Badge
+														variant="secondary"
+														className="text-xs ml-2 shrink-0"
+													>
+														{conversation.nodeCount}
+													</Badge>
+												</button>
+											</SidebarMenuButton>
+										</SidebarMenuItem>
+									),
+								)}
 								{conversations && conversations.length === 0 && (
 									<div className="px-2 py-4 text-xs text-muted-foreground text-center">
 										No conversations yet

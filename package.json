@@ -10,7 +10,9 @@
     "lint": "biome lint",
     "check": "biome check",
     "prepare": "husky",
-    "pre-commit": "lint-staged"
+    "pre-commit": "lint-staged",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.1",
@@ -78,7 +80,8 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": "biome check --write --unsafe",

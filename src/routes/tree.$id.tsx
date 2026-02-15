@@ -2,8 +2,14 @@ import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 import { useEffect } from "react";
+import { AppSidebar } from "@/components/navigation/AppSidebar";
 import { ConversationTree } from "@/components/tree/ConversationTree";
 import { Button } from "@/components/ui/button";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
 import {
 	Tooltip,
 	TooltipContent,
@@ -12,12 +18,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useConversation } from "@/hooks/useConversation";
 import type { Id } from "../../convex/_generated/dataModel";
-import {
-	SidebarProvider,
-	SidebarInset,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/navigation/AppSidebar";
 
 export const Route = createFileRoute("/tree/$id")({
 	component: TreePage,

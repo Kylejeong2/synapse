@@ -1,5 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { Id } from "convex/_generated/dataModel";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
@@ -66,7 +67,7 @@ function ConversationsPage() {
 	};
 
 	const handleDeleteConversation = async (
-		conversationId: string,
+		conversationId: Id<"conversations">,
 		e: React.MouseEvent,
 	) => {
 		e.stopPropagation();
