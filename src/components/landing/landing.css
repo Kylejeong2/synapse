@@ -1,0 +1,49 @@
+/*
+ * Landing page palette (Anthropic-inspired warm tones)
+ *
+ * Usage: Apply .landing to the root landing page element.
+ * Colors are available as CSS custom properties throughout child elements.
+ */
+
+.landing {
+	--landing-bg: #faf8f3;
+	--landing-surface: #f0ece4;
+	--landing-subtle: #f5f2eb;
+	--landing-border: #e8e3d9;
+	--landing-muted-border: #d4cfc7;
+
+	--landing-dark-bg: #1a1715;
+	--landing-dark-surface: #262220;
+	--landing-dark-border: #333;
+
+	--landing-text: #1a1715;
+	--landing-text-secondary: #6b6560;
+	--landing-text-tertiary: #9c958e;
+	--landing-text-on-dark: #faf8f3;
+	--landing-text-muted-dark: #b5aea6;
+
+	--landing-accent: #c4642a;
+
+	font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
+}
+
+/* Shared section padding */
+.landing-section {
+	padding-left: 1.5rem;
+	padding-right: 1.5rem;
+}
+
+@media (min-width: 640px) {
+	.landing-section {
+		padding-left: 2.5rem;
+		padding-right: 2.5rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	.landing-section {
+		padding-left: 4rem;
+		padding-right: 4rem;
+	}
+}

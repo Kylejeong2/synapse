@@ -5,13 +5,14 @@
 /* KaTeX styles for math rendering */
 @import 'katex/dist/katex.min.css';
 
+/* Inter variable font */
+@import '@fontsource-variable/inter';
+
 @custom-variant dark (&:is(.dark *));
 
 body {
   @apply m-0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

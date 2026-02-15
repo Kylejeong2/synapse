@@ -1,7 +1,8 @@
-import { SignIn, useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { LandingPage } from "@/components/landing/LandingPage";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -17,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
-	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
@@ -104,31 +104,7 @@ function ConversationsPage() {
 	}
 
 	if (!isSignedIn) {
-		return (
-			<div className="flex flex-col items-center justify-center min-h-screen bg-background">
-				<div className="relative w-full max-w-6xl px-4 py-16">
-					{/* Hero Section */}
-					<div className="text-center mb-20 space-y-6">
-						<h1 className="text-7xl font-bold tracking-tight mb-4">
-							<span className="text-foreground">Synapse</span>
-						</h1>
-					</div>
-
-					{/* Sign In Card */}
-					<Card className="w-full max-w-md mx-auto border-2 border-primary/20 shadow-xl bg-card/80 backdrop-blur mb-24">
-						<CardHeader className="text-center space-y-2 pb-6">
-							<CardTitle className="text-2xl">Get Started</CardTitle>
-							<CardDescription className="text-base">
-								Sign in to start creating conversation trees
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="pb-8">
-							<SignIn />
-						</CardContent>
-					</Card>
-				</div>
-			</div>
-		);
+		return <LandingPage />;
 	}
 
 	return (

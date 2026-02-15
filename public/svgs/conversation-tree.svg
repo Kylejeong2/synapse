@@ -1,0 +1,23 @@
+<svg viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="100" y1="32" x2="60" y2="100" stroke="#d4cfc7" stroke-width="1.5"/>
+  <line x1="100" y1="32" x2="140" y2="100" stroke="#d4cfc7" stroke-width="1.5"/>
+  <line x1="60" y1="132" x2="40" y2="200" stroke="#d4cfc7" stroke-width="1.5"/>
+  <line x1="60" y1="132" x2="90" y2="200" stroke="#d4cfc7" stroke-width="1.5"/>
+
+  <rect x="55" y="8" width="90" height="28" rx="4" fill="#e8e3d9" stroke="#d4cfc7" stroke-width="1"/>
+  <text x="100" y="26" text-anchor="middle" fill="#6b6560" font-size="9" font-weight="500">How to architect...</text>
+
+  <rect x="8" y="100" width="104" height="36" rx="4" fill="#faf8f3" stroke="#c4642a" stroke-width="1.5"/>
+  <text x="60" y="116" text-anchor="middle" fill="#1a1715" font-size="9" font-weight="500">Use microservices</text>
+  <text x="60" y="128" text-anchor="middle" fill="#9c958e" font-size="8">Claude Sonnet</text>
+
+  <rect x="90" y="100" width="104" height="36" rx="4" fill="#f0ece4" stroke="#d4cfc7" stroke-width="1"/>
+  <text x="142" y="116" text-anchor="middle" fill="#1a1715" font-size="9" font-weight="500">Monolith first</text>
+  <text x="142" y="128" text-anchor="middle" fill="#9c958e" font-size="8">GPT-5</text>
+
+  <rect x="0" y="200" width="80" height="26" rx="4" fill="#f0ece4" stroke="#d4cfc7" stroke-width="1"/>
+  <text x="40" y="217" text-anchor="middle" fill="#6b6560" font-size="8">Event-driven?</text>
+
+  <rect x="50" y="200" width="80" height="26" rx="4" fill="#f0ece4" stroke="#d4cfc7" stroke-width="1"/>
+  <text x="90" y="217" text-anchor="middle" fill="#6b6560" font-size="8">REST vs gRPC</text>
+</svg>
