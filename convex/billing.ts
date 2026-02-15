@@ -1,13 +1,8 @@
 import { internalAction } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
+import { MIN_OVERAGE_INVOICE_THRESHOLD_USD } from './pricing';
 import { stripe } from './stripe';
-
-/**
- * Minimum overage amount (in dollars) to create a Stripe invoice.
- * Avoids creating micro-invoices for tiny amounts.
- */
-const MIN_OVERAGE_THRESHOLD = 0.5;
 
 /**
  * Process overage billing for expired billing cycles.
@@ -39,7 +34,7 @@ export const processOverageBilling = internalAction({
 
 		for (const cycle of expiredCycles) {
 			try {
-				if (cycle.overageAmount > MIN_OVERAGE_THRESHOLD) {
+				if (cycle.overageAmount > MIN_OVERAGE_INVOICE_THRESHOLD_USD) {
 					const amountCents = Math.round(cycle.overageAmount * 100);
 					const periodStart = new Date(cycle.periodStart).toLocaleDateString();
 					const periodEnd = new Date(cycle.periodEnd).toLocaleDateString();

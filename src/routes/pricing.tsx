@@ -11,6 +11,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	FREE_TIER_MAX_CONVERSATIONS,
+	FREE_TIER_MAX_TOKENS,
+	PRO_INCLUDED_TOKEN_CREDIT_USD,
+	PRO_MONTHLY_PRICE_USD,
+} from "@/lib/constants/pricing";
 
 export const Route = createFileRoute("/pricing")({
 	component: PricingPage,
@@ -76,11 +82,14 @@ function PricingPage() {
 						<ul className="space-y-3 mb-6">
 							<li className="flex items-start gap-2">
 								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>1 conversation</span>
+								<span>
+									{FREE_TIER_MAX_CONVERSATIONS} conversation
+									{FREE_TIER_MAX_CONVERSATIONS === 1 ? "" : "s"}
+								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>20,000 tokens</span>
+								<span>{FREE_TIER_MAX_TOKENS.toLocaleString()} tokens</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
@@ -106,7 +115,9 @@ function PricingPage() {
 						</div>
 						<CardDescription>For power users and teams</CardDescription>
 						<div className="mt-4">
-							<span className="text-4xl font-bold">$20</span>
+							<span className="text-4xl font-bold">
+								${PRO_MONTHLY_PRICE_USD}
+							</span>
 							<span className="text-muted-foreground">/month</span>
 						</div>
 					</CardHeader>
@@ -118,7 +129,9 @@ function PricingPage() {
 							</li>
 							<li className="flex items-start gap-2">
 								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>$10 token credit included</span>
+								<span>
+									${PRO_INCLUDED_TOKEN_CREDIT_USD} token credit included
+								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
@@ -141,7 +154,8 @@ function PricingPage() {
 							{isLoading ? "Loading..." : "Subscribe"}
 						</Button>
 						<p className="text-xs text-muted-foreground mt-2 text-center">
-							After $10 credit, pay only for what you use
+							After ${PRO_INCLUDED_TOKEN_CREDIT_USD} credit, pay only for what
+							you use
 						</p>
 					</CardContent>
 				</Card>
@@ -157,8 +171,9 @@ function PricingPage() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-muted-foreground mb-4">
-							After your $10 monthly credit is used, you'll be charged based on
-							actual token usage. Pricing varies by model:
+							After your ${PRO_INCLUDED_TOKEN_CREDIT_USD} monthly credit is
+							used, you'll be charged based on actual token usage. Pricing
+							varies by model:
 						</p>
 						<ul className="space-y-2 text-sm">
 							<li>
