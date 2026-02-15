@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
+import { FREE_TIER_MAX_TOKENS } from './pricing'
 
 // Create a new node
 export const create = mutation({
@@ -24,6 +25,38 @@ export const create = mutation({
     const timer = new ConvexTimer()
     
     try {
+      // Get conversation to check free tier status
+      const conversation = await ctx.db.get(args.conversationId)
+      if (!conversation) {
+        throw new Error('Conversation not found')
+      }
+
+      // Check if user is free tier
+      const subscription = await ctx.db
+        .query('subscriptions')
+        .withIndex('userId', (q) => q.eq('userId', conversation.userId))
+        .filter((q) => q.eq(q.field('status'), 'active'))
+        .first()
+
+      if (!subscription && conversation.isFreeTier) {
+        // Free tier: Check total token usage
+        const freeTierUsage = await ctx.db
+          .query('free_tier_usage')
+          .withIndex('userId', (q) => q.eq('userId', conversation.userId))
+          .collect()
+
+        const totalTokensUsed = freeTierUsage.reduce(
+          (sum, usage) => sum + usage.tokensUsed,
+          0,
+        )
+
+        if (totalTokensUsed + args.tokensUsed > FREE_TIER_MAX_TOKENS) {
+          throw new Error(
+            `Free tier token limit exceeded. You have reached the ${FREE_TIER_MAX_TOKENS.toLocaleString()} token limit. Please upgrade to continue.`,
+          )
+        }
+      }
+
       const { requestId, ...nodeData } = args
       const nodeId = await ctx.db.insert('nodes', nodeData)
       
@@ -393,4 +426,3 @@ export const getContextChain = query({
     }
   },
 })
-

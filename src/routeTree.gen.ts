@@ -9,12 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TreeIdRouteImport } from './routes/tree.$id'
 import { Route as LogsIdRouteImport } from './routes/logs.$id'
 import { Route as ChatIdRouteImport } from './routes/chat.$id'
+import { Route as ApiCreateCheckoutRouteImport } from './routes/api.create-checkout'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -35,6 +42,11 @@ const ChatIdRoute = ChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCreateCheckoutRoute = ApiCreateCheckoutRouteImport.update({
+  id: '/api/create-checkout',
+  path: '/api/create-checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -43,14 +55,18 @@ const ApiChatRoute = ApiChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
@@ -58,22 +74,48 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  fullPaths:
+    | '/'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
-  id: '__root__' | '/' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  to:
+    | '/'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/pricing'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PricingRoute: typeof PricingRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCreateCheckoutRoute: typeof ApiCreateCheckoutRoute
   ChatIdRoute: typeof ChatIdRoute
   LogsIdRoute: typeof LogsIdRoute
   TreeIdRoute: typeof TreeIdRoute
@@ -81,6 +123,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -109,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/create-checkout': {
+      id: '/api/create-checkout'
+      path: '/api/create-checkout'
+      fullPath: '/api/create-checkout'
+      preLoaderRoute: typeof ApiCreateCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -121,7 +177,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PricingRoute: PricingRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCreateCheckoutRoute: ApiCreateCheckoutRoute,
   ChatIdRoute: ChatIdRoute,
   LogsIdRoute: LogsIdRoute,
   TreeIdRoute: TreeIdRoute,

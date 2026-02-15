@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
+import { FREE_TIER_MAX_CONVERSATIONS } from './pricing'
 
 // Create a new conversation
 export const create = mutation({
@@ -14,10 +15,33 @@ export const create = mutation({
     const timer = new ConvexTimer()
     
     try {
+      // Check if user has active subscription
+      const subscription = await ctx.db
+        .query('subscriptions')
+        .withIndex('userId', (q) => q.eq('userId', args.userId))
+        .filter((q) => q.eq(q.field('status'), 'active'))
+        .first()
+
+      // If no subscription, check free tier limits
+      if (!subscription) {
+        const existingFreeTierConversations = await ctx.db
+          .query('conversations')
+          .withIndex('userId', (q) => q.eq('userId', args.userId))
+          .filter((q) => q.eq(q.field('isFreeTier'), true))
+          .collect()
+
+        if (existingFreeTierConversations.length >= FREE_TIER_MAX_CONVERSATIONS) {
+          throw new Error(
+            `Free tier users are limited to ${FREE_TIER_MAX_CONVERSATIONS} conversation${FREE_TIER_MAX_CONVERSATIONS === 1 ? '' : 's'}. Please upgrade to create more conversations.`,
+          )
+        }
+      }
+
       const conversationId = await ctx.db.insert('conversations', {
         userId: args.userId,
         title: args.title,
         lastAccessedAt: Date.now(),
+        isFreeTier: !subscription, // Mark as free tier if no subscription
       })
       
       logConvexOperation({
@@ -297,6 +321,19 @@ export const deleteConversation = mutation({
     
     try {
       const { conversationId } = args
+      
+      // Check if this is a free tier conversation
+      const conversation = await ctx.db.get(conversationId)
+      if (!conversation) {
+        throw new Error('Conversation not found')
+      }
+
+      if (conversation.isFreeTier) {
+        throw new Error(
+          'Free tier conversations cannot be deleted. Please upgrade to manage your conversations.',
+        )
+      }
+
       // Delete all nodes first
       const nodes = await ctx.db
         .query('nodes')
@@ -391,4 +428,3 @@ export const updateDefaultModel = mutation({
     }
   },
 })
-
