@@ -7,7 +7,6 @@ import { type LanguageModel, streamText } from "ai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { calculateTokenCost } from "../lib/billing/tokenPricing";
 import { SYSTEM_PROMPT } from "../lib/constants";
 import {
 	DEFAULT_MODEL,
@@ -22,6 +21,7 @@ import {
 	Timer,
 } from "../lib/logger";
 import { calculateTotalTokens, type TokenUsage } from "../lib/tokens";
+import { calculateTokenCost } from "../lib/tokenPricing";
 
 /**
  * Convex HTTP client for server-side database operations

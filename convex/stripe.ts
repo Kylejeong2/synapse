@@ -41,12 +41,3 @@ function getEnvVar(name: string): string {
 export function getStripePriceId(): string {
 	return getEnvVar('STRIPE_PRICE_ID_SUBSCRIPTION');
 }
-
-export function getStripeMeterId(): string {
-	return getEnvVar('STRIPE_METER_ID_TOKEN_USAGE');
-}
-
-export function getStripeWebhookSecret(): string {
-	return getEnvVar('STRIPE_WEBHOOK_SECRET');
-}
-

@@ -1,253 +1,93 @@
-import { mutation, query, internalMutation } from './_generated/server';
-import { v } from 'convex/values';
+import { internalAction } from './_generated/server';
+import { internal } from './_generated/api';
+import type { Id } from './_generated/dataModel';
 import { stripe } from './stripe';
 
 /**
- * Report usage to Stripe Metering API
+ * Minimum overage amount (in dollars) to create a Stripe invoice.
+ * Avoids creating micro-invoices for tiny amounts.
  */
-export const reportUsageToStripe = mutation({
-	args: {
-		userId: v.string(),
-		billingCycleId: v.optional(v.id('billing_cycles')),
-	},
-	handler: async (ctx, args) => {
-		const subscription = await ctx.db
-			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
-			.first();
+const MIN_OVERAGE_THRESHOLD = 0.5;
 
-		if (!subscription) {
-			throw new Error('No active subscription found');
+/**
+ * Process overage billing for expired billing cycles.
+ *
+ * This action runs on a cron schedule and:
+ * 1. Finds all active billing cycles past their periodEnd
+ * 2. For cycles with overage > threshold, creates a one-off Stripe invoice
+ * 3. Marks all expired cycles as completed
+ *
+ * Idempotent: only processes cycles with status 'active'.
+ * Error-isolated: one cycle failure doesn't block others.
+ */
+export const processOverageBilling = internalAction({
+	handler: async (ctx): Promise<{ processed: number; invoiced: number; errors: number }> => {
+		const expiredCycles: Array<{
+			_id: Id<'billing_cycles'>;
+			overageAmount: number;
+			periodStart: number;
+			periodEnd: number;
+			stripeCustomerId: string;
+		}> = await ctx.runQuery(internal.usage.getExpiredActiveCycles);
+
+		if (expiredCycles.length === 0) {
+			return { processed: 0, invoiced: 0, errors: 0 };
 		}
 
-		// Get billing cycle
-		let billingCycle;
-		if (args.billingCycleId) {
-			billingCycle = await ctx.db.get(args.billingCycleId);
-		} else {
-			billingCycle = await ctx.db
-				.query('billing_cycles')
-				.withIndex('userId', (q) => q.eq('userId', args.userId))
-				.filter((q) => q.eq(q.field('status'), 'active'))
-				.first();
-		}
+		let invoiced = 0;
+		let errors = 0;
 
-		if (!billingCycle) {
-			throw new Error('No active billing cycle found');
-		}
-
-		// Calculate overage (tokens used beyond included credit)
-		// We report overage in dollars to Stripe
-		const overageAmount = Math.max(
-			0,
-			billingCycle.tokenCost - billingCycle.includedCredit,
-		);
-
-		if (overageAmount <= 0) {
-			// No overage to report
-			return { reported: false, overageAmount: 0 };
-		}
-
-		// Report to Stripe Metering API
-		// Note: Stripe metering expects quantity, so we convert dollars to a quantity
-		// For simplicity, we'll report cents as the quantity
-		const quantityInCents = Math.ceil(overageAmount * 100);
-
-		// Retry logic for Stripe API failures
-		const maxRetries = 3;
-		let lastError: unknown;
-
-		for (let attempt = 0; attempt < maxRetries; attempt++) {
+		for (const cycle of expiredCycles) {
 			try {
-				await stripe.billing.meterEvents.create({
-					event_name: 'token_usage',
-					payload: {
-                        // Truncate to 2 decimal places
-						value: quantityInCents.toFixed(2),
-						identifier: subscription.stripeSubscriptionId,
-					},
-				});
+				if (cycle.overageAmount > MIN_OVERAGE_THRESHOLD) {
+					const amountCents = Math.round(cycle.overageAmount * 100);
+					const periodStart = new Date(cycle.periodStart).toLocaleDateString();
+					const periodEnd = new Date(cycle.periodEnd).toLocaleDateString();
 
-				// Update billing cycle with Stripe invoice ID if available
-				// (This would be set when invoice is created)
+					// Create an invoice item on the customer
+					await stripe.invoiceItems.create({
+						customer: cycle.stripeCustomerId,
+						amount: amountCents,
+						currency: 'usd',
+						description: `Synapse token usage overage - billing period ${periodStart} to ${periodEnd}`,
+					});
 
-				return {
-					reported: true,
-					overageAmount,
-					quantityInCents,
-				};
+					// Create and auto-finalize the invoice
+					const invoice = await stripe.invoices.create({
+						customer: cycle.stripeCustomerId,
+						collection_method: 'charge_automatically',
+						auto_advance: true,
+						metadata: {
+							billingCycleId: cycle._id,
+							type: 'overage',
+						},
+					});
+
+					await ctx.runMutation(internal.usage.completeBillingCycle, {
+						billingCycleId: cycle._id,
+						stripeInvoiceId: invoice.id,
+					});
+
+					invoiced++;
+				} else {
+					// No meaningful overage, just mark as completed
+					await ctx.runMutation(internal.usage.completeBillingCycle, {
+						billingCycleId: cycle._id,
+					});
+				}
 			} catch (error) {
-				lastError = error;
+				errors++;
 				console.error(
-					`Failed to report usage to Stripe (attempt ${attempt + 1}/${maxRetries}):`,
-					error,
+					`Failed to process overage billing for cycle ${cycle._id}:`,
+					error instanceof Error ? error.message : String(error),
 				);
-
-				// Don't retry on 4xx errors (client errors)
-				if (
-					error &&
-					typeof error === 'object' &&
-					'statusCode' in error &&
-					typeof error.statusCode === 'number' &&
-					error.statusCode >= 400 &&
-					error.statusCode < 500
-				) {
-					throw error;
-				}
-
-				// Wait before retrying (exponential backoff)
-				if (attempt < maxRetries - 1) {
-					await new Promise((resolve) =>
-						setTimeout(resolve, Math.pow(2, attempt) * 1000),
-					);
-				}
 			}
 		}
 
-		// All retries failed
-		console.error('Failed to report usage after all retries:', lastError);
-		throw lastError;
+		return {
+			processed: expiredCycles.length,
+			invoiced,
+			errors,
+		};
 	},
 });
-
-/**
- * Get or create billing cycle for current period
- */
-export const getOrCreateBillingCycle = mutation({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
-		const subscription = await ctx.db
-			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
-			.first();
-
-		if (!subscription) {
-			throw new Error('No active subscription found');
-		}
-
-		// Check for existing active billing cycle
-		let billingCycle = await ctx.db
-			.query('billing_cycles')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
-			.first();
-
-		// Check if cycle matches current subscription period
-		if (
-			billingCycle &&
-			billingCycle.periodStart === subscription.currentPeriodStart &&
-			billingCycle.periodEnd === subscription.currentPeriodEnd
-		) {
-			return billingCycle._id;
-		}
-
-		// Create new billing cycle
-		const billingCycleId = await ctx.db.insert('billing_cycles', {
-			userId: args.userId,
-			subscriptionId: subscription._id,
-			periodStart: subscription.currentPeriodStart,
-			periodEnd: subscription.currentPeriodEnd,
-			tokensUsed: 0,
-			tokenCost: 0,
-			includedCredit: subscription.includedTokenCredit,
-			overageAmount: 0,
-			status: 'active',
-		});
-
-		return billingCycleId;
-	},
-});
-
-/**
- * Reset token credit for new billing cycle
- */
-export const resetTokenCredit = internalMutation({
-	args: {
-		subscriptionId: v.id('subscriptions'),
-	},
-	handler: async (ctx, args) => {
-		const subscription = await ctx.db.get(args.subscriptionId);
-		if (!subscription) {
-			throw new Error('Subscription not found');
-		}
-
-		// Mark old billing cycle as completed
-		const oldCycle = await ctx.db
-			.query('billing_cycles')
-			.withIndex('subscriptionId', (q) =>
-				q.eq('subscriptionId', args.subscriptionId),
-			)
-			.filter((q) => q.eq(q.field('status'), 'active'))
-			.first();
-
-		if (oldCycle) {
-			await ctx.db.patch(oldCycle._id, {
-				status: 'completed',
-			});
-		}
-
-		// Create new billing cycle
-		const newCycleId = await ctx.db.insert('billing_cycles', {
-			userId: subscription.userId,
-			subscriptionId: subscription._id,
-			periodStart: subscription.currentPeriodStart,
-			periodEnd: subscription.currentPeriodEnd,
-			tokensUsed: 0,
-			tokenCost: 0,
-			includedCredit: subscription.includedTokenCredit,
-			overageAmount: 0,
-			status: 'active',
-		});
-
-		return newCycleId;
-	},
-});
-
-/**
- * Get billing history for a user
- */
-export const getBillingHistory = query({
-	args: {
-		userId: v.string(),
-		limit: v.optional(v.number()),
-	},
-	handler: async (ctx, args) => {
-		const limit = args.limit || 12; // Default to last 12 cycles
-		const cycles = await ctx.db
-			.query('billing_cycles')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'completed'))
-			.order('desc')
-			.take(limit);
-
-		return cycles;
-	},
-});
-
-/**
- * Clean up old usage records (older than 90 days)
- */
-export const cleanupOldUsageRecords = mutation({
-	args: {},
-	handler: async (ctx) => {
-		const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-
-		const oldRecords = await ctx.db
-			.query('usage_records')
-			.withIndex('timestamp', (q) => q.lt('timestamp', ninetyDaysAgo))
-			.collect();
-
-		let deletedCount = 0;
-		for (const record of oldRecords) {
-			await ctx.db.delete(record._id);
-			deletedCount++;
-		}
-
-		return { deletedCount };
-	},
-});
-

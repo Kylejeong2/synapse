@@ -1,6 +1,5 @@
-import { mutation, query } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { api } from './_generated/api';
 
 /**
  * Record token usage for a request
@@ -267,6 +266,50 @@ export const getConversationTokenTotal = query({
 			.collect();
 
 		return records.reduce((sum, record) => sum + record.tokensUsed, 0);
+	},
+});
+
+/**
+ * Find all active billing cycles that have expired (periodEnd < now).
+ * Joins with subscriptions to include the stripeCustomerId for Stripe API calls.
+ * Used by the overage billing cron job.
+ */
+export const getExpiredActiveCycles = internalQuery({
+	handler: async (ctx) => {
+		const now = Date.now();
+		const activeCycles = await ctx.db
+			.query('billing_cycles')
+			.filter((q) => q.eq(q.field('status'), 'active'))
+			.collect();
+
+		const expired = [];
+		for (const cycle of activeCycles) {
+			if (cycle.periodEnd > now) continue;
+			const subscription = await ctx.db.get(cycle.subscriptionId);
+			if (!subscription) continue;
+			expired.push({
+				...cycle,
+				stripeCustomerId: subscription.stripeCustomerId,
+			});
+		}
+		return expired;
+	},
+});
+
+/**
+ * Mark a billing cycle as completed and optionally store the Stripe invoice ID.
+ * Called by the overage billing action after processing.
+ */
+export const completeBillingCycle = internalMutation({
+	args: {
+		billingCycleId: v.id('billing_cycles'),
+		stripeInvoiceId: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		await ctx.db.patch(args.billingCycleId, {
+			status: 'completed',
+			stripeInvoiceId: args.stripeInvoiceId,
+		});
 	},
 });
 
