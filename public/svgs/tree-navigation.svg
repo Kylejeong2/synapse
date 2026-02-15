@@ -1,0 +1,27 @@
+<svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="150" y1="24" x2="80" y2="72" stroke="#333" stroke-width="1.5"/>
+  <line x1="150" y1="24" x2="220" y2="72" stroke="#333" stroke-width="1.5"/>
+  <line x1="80" y1="96" x2="50" y2="140" stroke="#333" stroke-width="1.5"/>
+  <line x1="80" y1="96" x2="115" y2="140" stroke="#333" stroke-width="1.5"/>
+  <line x1="220" y1="96" x2="240" y2="140" stroke="#333" stroke-width="1.5"/>
+
+  <rect x="115" y="6" width="70" height="22" rx="3" fill="#333" stroke="#444" stroke-width="1"/>
+  <text x="150" y="20" text-anchor="middle" fill="#b5aea6" font-size="8">Root prompt</text>
+
+  <rect x="35" y="70" width="90" height="30" rx="3" fill="#333" stroke="#444" stroke-width="1"/>
+  <text x="80" y="84" text-anchor="middle" fill="#faf8f3" font-size="8" font-weight="500">Branch A</text>
+  <text x="80" y="94" text-anchor="middle" fill="#6b6560" font-size="7">Claude</text>
+
+  <rect x="175" y="70" width="90" height="30" rx="3" fill="#333" stroke="#444" stroke-width="1"/>
+  <text x="220" y="84" text-anchor="middle" fill="#faf8f3" font-size="8" font-weight="500">Branch B</text>
+  <text x="220" y="94" text-anchor="middle" fill="#6b6560" font-size="7">GPT-5</text>
+
+  <rect x="10" y="138" width="80" height="22" rx="3" fill="#333" stroke="#444" stroke-width="1"/>
+  <text x="50" y="152" text-anchor="middle" fill="#6b6560" font-size="7">Deep dive</text>
+
+  <rect x="75" y="138" width="80" height="22" rx="3" fill="#262220" stroke="#c4642a" stroke-width="1.5"/>
+  <text x="115" y="152" text-anchor="middle" fill="#faf8f3" font-size="7" font-weight="600">You are here</text>
+
+  <rect x="200" y="138" width="80" height="22" rx="3" fill="#333" stroke="#444" stroke-width="1"/>
+  <text x="240" y="152" text-anchor="middle" fill="#6b6560" font-size="7">Alt path</text>
+</svg>
