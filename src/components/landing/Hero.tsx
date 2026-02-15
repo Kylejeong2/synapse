@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ProductMockup } from "./ProductMockup";
 
 const providers = ["Anthropic", "OpenAI", "Google"];
