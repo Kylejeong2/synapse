@@ -14,6 +14,7 @@ import {
 	type ModelId,
 	type ModelProvider,
 } from "../lib/constants/models";
+import { FREE_TIER_MAX_TOKENS } from "../lib/constants/pricing";
 import {
 	type ChatRequestLog,
 	generateRequestId,
@@ -144,12 +145,11 @@ export const Route = createFileRoute("/api/chat")({
 							},
 						);
 
-						if (conversationTokens >= 20_000) {
+						if (conversationTokens >= FREE_TIER_MAX_TOKENS) {
 							return new Response(
 								JSON.stringify({
 									error: "Free tier limit exceeded",
-									message:
-										"You've reached the 20k token limit for free tier. Please upgrade to continue.",
+									message: `You've reached the ${FREE_TIER_MAX_TOKENS.toLocaleString()} token limit for free tier. Please upgrade to continue.`,
 									upgradeRequired: true,
 								}),
 								{

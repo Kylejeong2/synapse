@@ -1,16 +1,11 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
-
-/**
- * Free tier limits
- */
-const FREE_TIER_MAX_CONVERSATIONS = 1;
-const FREE_TIER_MAX_TOKENS = 20_000; // 20k tokens
-
-/**
- * Paid tier defaults
- */
-const DEFAULT_INCLUDED_CREDIT = 10; // $10 in tokens
+import {
+	DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
+	FREE_TIER_MAX_CONVERSATIONS,
+	FREE_TIER_MAX_TOKENS,
+	PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD,
+} from './pricing';
 
 /**
  * Check if user can make a request (rate limiting)
@@ -66,7 +61,7 @@ export const checkTokenLimit = query({
 				.first();
 
 			const includedCredit =
-				subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT;
+				subscription.includedTokenCredit ?? DEFAULT_INCLUDED_TOKEN_CREDIT_USD;
 
 			if (!currentCycle) {
 				// No active cycle, allow (will be created on first usage)
@@ -77,7 +72,8 @@ export const checkTokenLimit = query({
 			const remainingCredit = includedCredit - totalCost;
 
 			// Estimate cost for requested tokens (rough estimate in USD per 1k tokens)
-			const estimatedCost = (requestedTokens / 1000) * 0.02;
+			const estimatedCost =
+				(requestedTokens / 1000) * PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD;
 
 			if (remainingCredit - estimatedCost < 0) {
 				return {
@@ -152,9 +148,11 @@ export const getUsageStats = query({
 					tokensUsed: 0,
 					tokenCost: 0,
 					remainingCredit:
-						subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT,
+						subscription.includedTokenCredit ??
+						DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
 					includedCredit:
-						subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT,
+						subscription.includedTokenCredit ??
+						DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
 					overageAmount: 0,
 					periodStart: subscription.currentPeriodStart,
 					periodEnd: subscription.currentPeriodEnd,

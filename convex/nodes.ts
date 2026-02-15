@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
+import { FREE_TIER_MAX_TOKENS } from './pricing'
 
 // Create a new node
 export const create = mutation({
@@ -49,9 +50,9 @@ export const create = mutation({
           0,
         )
 
-        if (totalTokensUsed + args.tokensUsed > 20_000) {
+        if (totalTokensUsed + args.tokensUsed > FREE_TIER_MAX_TOKENS) {
           throw new Error(
-            'Free tier token limit exceeded. You have reached the 20k token limit. Please upgrade to continue.',
+            `Free tier token limit exceeded. You have reached the ${FREE_TIER_MAX_TOKENS.toLocaleString()} token limit. Please upgrade to continue.`,
           )
         }
       }
@@ -425,4 +426,3 @@ export const getContextChain = query({
     }
   },
 })
-

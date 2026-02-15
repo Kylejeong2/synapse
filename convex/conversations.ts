@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
+import { FREE_TIER_MAX_CONVERSATIONS } from './pricing'
 
 // Create a new conversation
 export const create = mutation({
@@ -29,9 +30,9 @@ export const create = mutation({
           .filter((q) => q.eq(q.field('isFreeTier'), true))
           .collect()
 
-        if (existingFreeTierConversations.length >= 1) {
+        if (existingFreeTierConversations.length >= FREE_TIER_MAX_CONVERSATIONS) {
           throw new Error(
-            'Free tier users are limited to 1 conversation. Please upgrade to create more conversations.',
+            `Free tier users are limited to ${FREE_TIER_MAX_CONVERSATIONS} conversation${FREE_TIER_MAX_CONVERSATIONS === 1 ? '' : 's'}. Please upgrade to create more conversations.`,
           )
         }
       }
@@ -427,4 +428,3 @@ export const updateDefaultModel = mutation({
     }
   },
 })
-
