@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, Zap } from "lucide-react";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,137 +59,151 @@ function PricingPage() {
 	};
 
 	return (
-		<div className="container mx-auto py-12 px-4">
-			<div className="text-center mb-12">
-				<h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
-				<p className="text-muted-foreground text-lg">
-					Start free, upgrade when you need more
-				</p>
-			</div>
+		<div className="flex flex-col items-center min-h-screen bg-background px-4 py-16">
+			<div className="w-full max-w-6xl">
+				{/* Hero Section */}
+				<div className="text-center mb-20 space-y-6">
+					<h1 className="text-6xl md:text-7xl font-bold tracking-tight text-foreground">
+						Choose Your Plan
+					</h1>
+					<p className="text-muted-foreground text-xl max-w-2xl mx-auto">
+						Start free, upgrade when you need more
+					</p>
+				</div>
 
-			<div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-				{/* Free Tier */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Free</CardTitle>
-						<CardDescription>Perfect for trying out Synapse</CardDescription>
-						<div className="mt-4">
-							<span className="text-4xl font-bold">$0</span>
-							<span className="text-muted-foreground">/month</span>
-						</div>
-					</CardHeader>
-					<CardContent>
-						<ul className="space-y-3 mb-6">
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>
-									{FREE_TIER_MAX_CONVERSATIONS} conversation
-									{FREE_TIER_MAX_CONVERSATIONS === 1 ? "" : "s"}
+				{/* Pricing Cards */}
+				<div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+					{/* Free Tier */}
+					<Card className="border-border/50 bg-card/50 backdrop-blur hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 transition-all duration-300">
+						<CardHeader className="pb-6">
+							<CardTitle className="text-2xl">Free</CardTitle>
+							<CardDescription className="text-base">
+								Perfect for trying out Synapse
+							</CardDescription>
+							<div className="mt-6">
+								<span className="text-5xl font-bold tracking-tight">$0</span>
+								<span className="text-muted-foreground text-lg ml-1">
+									/month
 								</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>{FREE_TIER_MAX_TOKENS.toLocaleString()} tokens</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>All AI models</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>Conversation branching</span>
-							</li>
-						</ul>
-						<Button variant="outline" className="w-full" disabled>
-							Current Plan
-						</Button>
-					</CardContent>
-				</Card>
+							</div>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-4 mb-8">
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										{FREE_TIER_MAX_CONVERSATIONS} conversation
+										{FREE_TIER_MAX_CONVERSATIONS === 1 ? "" : "s"}
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										{FREE_TIER_MAX_TOKENS.toLocaleString()} tokens
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">All AI models</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										Conversation branching
+									</span>
+								</li>
+							</ul>
+							<Button variant="outline" className="w-full h-11" disabled>
+								Current Plan
+							</Button>
+						</CardContent>
+					</Card>
 
-				{/* Paid Tier */}
-				<Card className="border-primary">
-					<CardHeader>
-						<div className="flex items-center justify-between">
-							<CardTitle>Pro</CardTitle>
-							<Badge>Popular</Badge>
-						</div>
-						<CardDescription>For power users and teams</CardDescription>
-						<div className="mt-4">
-							<span className="text-4xl font-bold">
-								${PRO_MONTHLY_PRICE_USD}
-							</span>
-							<span className="text-muted-foreground">/month</span>
-						</div>
-					</CardHeader>
-					<CardContent>
-						<ul className="space-y-3 mb-6">
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>Unlimited conversations</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>
-									${PRO_INCLUDED_TOKEN_CREDIT_USD} token credit included
+					{/* Pro Tier */}
+					<Card className="border-2 border-primary/40 bg-card/80 backdrop-blur shadow-xl shadow-primary/10 hover:shadow-2xl hover:shadow-primary/15 hover:border-primary/60 transition-all duration-300">
+						<CardHeader className="pb-6">
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-2xl">Pro</CardTitle>
+								<Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold">
+									Popular
+								</Badge>
+							</div>
+							<CardDescription className="text-base">
+								For power users and teams
+							</CardDescription>
+							<div className="mt-6">
+								<span className="text-5xl font-bold tracking-tight">
+									${PRO_MONTHLY_PRICE_USD}
 								</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>Usage-based pricing after credit</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>All AI models</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-								<span>Priority support</span>
-							</li>
-						</ul>
-						<Button
-							className="w-full"
-							onClick={handleSubscribe}
-							disabled={isLoading}
-						>
-							{isLoading ? "Loading..." : "Subscribe"}
-						</Button>
-						<p className="text-xs text-muted-foreground mt-2 text-center">
-							After ${PRO_INCLUDED_TOKEN_CREDIT_USD} credit, pay only for what
-							you use
-						</p>
-					</CardContent>
-				</Card>
-			</div>
+								<span className="text-muted-foreground text-lg ml-1">
+									/month
+								</span>
+							</div>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-4 mb-8">
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										Unlimited conversations
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										${PRO_INCLUDED_TOKEN_CREDIT_USD} token credit included
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										Usage-based pricing after credit
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">All AI models</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 mt-0.5">
+										<Check className="h-3.5 w-3.5 text-primary" />
+									</div>
+									<span className="text-sm text-foreground">
+										Priority support
+									</span>
+								</li>
+							</ul>
+							<Button
+								className="w-full h-11 shadow-lg"
+								onClick={handleSubscribe}
+								disabled={isLoading}
+							>
+								{isLoading ? "Loading..." : "Subscribe"}
+							</Button>
+							<p className="text-xs text-muted-foreground mt-3 text-center">
+								After ${PRO_INCLUDED_TOKEN_CREDIT_USD} credit, pay only for what
+								you use
+							</p>
+						</CardContent>
+					</Card>
+				</div>
 
-			<div className="mt-12 max-w-2xl mx-auto">
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Zap className="h-5 w-5" />
-							Usage-Based Pricing
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-muted-foreground mb-4">
-							After your ${PRO_INCLUDED_TOKEN_CREDIT_USD} monthly credit is
-							used, you'll be charged based on actual token usage. Pricing
-							varies by model:
-						</p>
-						<ul className="space-y-2 text-sm">
-							<li>
-								• Premium models (GPT-5, Claude Opus): higher per‑token rates
-							</li>
-							<li>
-								• Standard models (Claude Sonnet): mid‑range per‑token rates
-							</li>
-							<li>• Efficient models (Claude Haiku): lowest per‑token rates</li>
-						</ul>
-						<p className="text-xs text-muted-foreground mt-4">
-							Overage charges are accumulated and billed at the end of your
-							billing cycle.
-						</p>
-					</CardContent>
-				</Card>
 			</div>
 		</div>
 	);
