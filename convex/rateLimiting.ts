@@ -8,9 +8,9 @@ const FREE_TIER_MAX_CONVERSATIONS = 1;
 const FREE_TIER_MAX_TOKENS = 20_000; // 20k tokens
 
 /**
- * Paid tier limits
+ * Paid tier defaults
  */
-const PAID_TIER_INCLUDED_CREDIT = 10; // $10 in tokens
+const DEFAULT_INCLUDED_CREDIT = 10; // $10 in tokens
 
 /**
  * Check if user can make a request (rate limiting)
@@ -65,16 +65,19 @@ export const checkTokenLimit = query({
 				.filter((q) => q.eq(q.field('status'), 'active'))
 				.first();
 
+			const includedCredit =
+				subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT;
+
 			if (!currentCycle) {
 				// No active cycle, allow (will be created on first usage)
-				return { allowed: true, remainingCredit: PAID_TIER_INCLUDED_CREDIT };
+				return { allowed: true, remainingCredit: includedCredit };
 			}
 
 			const totalCost = currentCycle.tokenCost;
-			const remainingCredit = PAID_TIER_INCLUDED_CREDIT - totalCost;
+			const remainingCredit = includedCredit - totalCost;
 
-			// Estimate cost for requested tokens (rough estimate: $0.02 per 1k tokens)
-			const estimatedCost = (requestedTokens / 1000) * 0.02 * 2.5; // 2.5x markup
+			// Estimate cost for requested tokens (rough estimate in USD per 1k tokens)
+			const estimatedCost = (requestedTokens / 1000) * 0.02;
 
 			if (remainingCredit - estimatedCost < 0) {
 				return {
@@ -148,8 +151,10 @@ export const getUsageStats = query({
 					tier: 'paid',
 					tokensUsed: 0,
 					tokenCost: 0,
-					remainingCredit: PAID_TIER_INCLUDED_CREDIT,
-					includedCredit: PAID_TIER_INCLUDED_CREDIT,
+					remainingCredit:
+						subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT,
+					includedCredit:
+						subscription.includedTokenCredit ?? DEFAULT_INCLUDED_CREDIT,
 					overageAmount: 0,
 					periodStart: subscription.currentPeriodStart,
 					periodEnd: subscription.currentPeriodEnd,
@@ -165,11 +170,11 @@ export const getUsageStats = query({
 				tier: 'paid',
 				tokensUsed: currentCycle.tokensUsed,
 				tokenCost: currentCycle.tokenCost,
-				remainingCredit: Math.max(
-					0,
-					currentCycle.includedCredit - currentCycle.tokenCost,
-				),
-				includedCredit: currentCycle.includedCredit,
+					remainingCredit: Math.max(
+						0,
+						currentCycle.includedCredit - currentCycle.tokenCost,
+					),
+					includedCredit: currentCycle.includedCredit,
 				overageAmount,
 				periodStart: currentCycle.periodStart,
 				periodEnd: currentCycle.periodEnd,
@@ -220,4 +225,3 @@ export const isFreeTier = query({
 		return !subscription;
 	},
 });
-

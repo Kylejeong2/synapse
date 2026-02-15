@@ -162,21 +162,16 @@ function PricingPage() {
 						</p>
 						<ul className="space-y-2 text-sm">
 							<li>
-								• Premium models (GPT-5, Claude Opus): ~$0.02-0.08 per 1k tokens
+								• Premium models (GPT-5, Claude Opus): higher per‑token rates
 							</li>
 							<li>
-								• Standard models (GPT-4o, Claude Sonnet): ~$0.01-0.04 per 1k
-								tokens
+								• Standard models (Claude Sonnet): mid‑range per‑token rates
 							</li>
-							<li>
-								• Efficient models (GPT-4o Mini, Claude Haiku): ~$0.0004-0.003
-								per 1k tokens
-							</li>
+							<li>• Efficient models (Claude Haiku): lowest per‑token rates</li>
 						</ul>
 						<p className="text-xs text-muted-foreground mt-4">
-							All prices include a 2.5x markup over provider costs. Overage
-							charges are accumulated and billed at the end of your billing
-							cycle.
+							Overage charges are accumulated and billed at the end of your
+							billing cycle.
 						</p>
 					</CardContent>
 				</Card>
