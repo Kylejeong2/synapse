@@ -7,31 +7,25 @@ const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
 if (!CONVEX_URL) {
 	throw new Error("VITE_CONVEX_URL environment variable is not set");
 }
+
 const convexClient = new ConvexHttpClient(CONVEX_URL);
 
-export const Route = createFileRoute("/api/create-checkout")({
+export const Route = createFileRoute("/api/billing-portal")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
 				try {
 					const auth = await requireClerkUserId(request);
 					if ("response" in auth) return auth.response;
-					const { userId } = auth;
-
-					const body = await request.json();
-					const { userEmail } = body;
 
 					const result = await convexClient.mutation(
-						api.subscriptions.createCheckoutSession,
-						{
-							userId,
-							userEmail,
-						},
+						api.subscriptions.createBillingPortalSession,
+						{ userId: auth.userId },
 					);
 
 					if (!result.url) {
 						return new Response(
-							JSON.stringify({ error: "Failed to create checkout session" }),
+							JSON.stringify({ error: "Failed to create portal session" }),
 							{
 								status: 500,
 								headers: { "Content-Type": "application/json" },
@@ -44,10 +38,9 @@ export const Route = createFileRoute("/api/create-checkout")({
 						headers: { "Content-Type": "application/json" },
 					});
 				} catch (error) {
-					console.error("Error creating checkout session:", error);
 					return new Response(
 						JSON.stringify({
-							error: "Failed to create checkout session",
+							error: "Failed to create portal session",
 							details: error instanceof Error ? error.message : String(error),
 						}),
 						{

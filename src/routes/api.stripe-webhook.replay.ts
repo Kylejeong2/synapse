@@ -27,15 +27,25 @@ function createStripeClient(): Stripe {
 	});
 }
 
-export const Route = createFileRoute("/api/stripe-webhook")({
+export const Route = createFileRoute("/api/stripe-webhook/replay")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
 				try {
-					const signature = request.headers.get("stripe-signature");
-					if (!signature) {
+					const token = request.headers.get("x-webhook-replay-token");
+					const expected = getRequiredEnv("STRIPE_WEBHOOK_REPLAY_TOKEN");
+					if (!token || token !== expected) {
+						return new Response(JSON.stringify({ error: "Unauthorized" }), {
+							status: 401,
+							headers: { "Content-Type": "application/json" },
+						});
+					}
+
+					const body = await request.json();
+					const eventId = body?.eventId as string | undefined;
+					if (!eventId) {
 						return new Response(
-							JSON.stringify({ error: "Missing Stripe signature" }),
+							JSON.stringify({ error: "eventId is required" }),
 							{
 								status: 400,
 								headers: { "Content-Type": "application/json" },
@@ -43,56 +53,29 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 						);
 					}
 
-					const payload = await request.text();
 					const stripe = createStripeClient();
-					const webhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
-
-					let event: Stripe.Event;
-					try {
-						event = stripe.webhooks.constructEvent(
-							payload,
-							signature,
-							webhookSecret,
-						);
-					} catch (error) {
-						return new Response(
-							JSON.stringify({
-								error: "Invalid Stripe webhook signature",
-								details: error instanceof Error ? error.message : String(error),
-							}),
-							{
-								status: 400,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					}
-
+					const event = await stripe.events.retrieve(eventId);
 					const result = await handleStripeEvent({
 						convexClient,
 						stripe,
 						event,
-						payload,
+						payload: JSON.stringify(event),
 					});
 
-					if (result.duplicate) {
-						return new Response(
-							JSON.stringify({ received: true, duplicate: true }),
-							{
-								status: 200,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					}
-
-					return new Response(JSON.stringify({ received: true }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					});
-				} catch (error) {
-					console.error("Stripe webhook processing failed:", error);
 					return new Response(
 						JSON.stringify({
-							error: "Stripe webhook processing failed",
+							replayed: true,
+							duplicate: result.duplicate,
+						}),
+						{
+							status: 200,
+							headers: { "Content-Type": "application/json" },
+						},
+					);
+				} catch (error) {
+					return new Response(
+						JSON.stringify({
+							error: "Replay failed",
 							details: error instanceof Error ? error.message : String(error),
 						}),
 						{

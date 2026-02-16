@@ -235,6 +235,7 @@ synapse/
 | `STRIPE_SECRET_KEY` | Yes (for billing) | Stripe secret key used for checkout, invoices, and webhooks |
 | `STRIPE_PRICE_ID_SUBSCRIPTION` | Yes (for billing) | Stripe recurring price ID for the Pro subscription |
 | `STRIPE_WEBHOOK_SECRET` | Yes (for billing) | Stripe webhook signing secret for `/api/stripe-webhook` verification |
+| `STRIPE_WEBHOOK_REPLAY_TOKEN` | Yes (for billing ops) | Shared secret for manual webhook replay endpoint `/api/stripe-webhook/replay` |
 
 ### Client-Side Variables (prefixed with `VITE_`)
 
@@ -251,6 +252,54 @@ These are automatically detected by the AI SDK when using corresponding models:
 - `ANTHROPIC_API_KEY` - For Anthropic/Claude models
 - `GOOGLE_GENERATIVE_AI_API_KEY` - For Google/Gemini models
 - `XAI_API_KEY` - For xAI/Grok models
+
+## Stripe Production Runbook
+
+### Required Stripe Endpoints
+
+- `POST /api/create-checkout` (Clerk-authenticated)
+- `POST /api/stripe-webhook` (Stripe signature verified)
+- `POST /api/stripe-webhook/replay` (ops-only token authenticated)
+- `POST /api/billing-portal` (Clerk-authenticated)
+- `POST /api/subscription-cancel` (Clerk-authenticated)
+- `POST /api/subscription-resume` (Clerk-authenticated)
+- `POST /api/subscription-spend-cap` (Clerk-authenticated)
+
+### Stripe Dashboard Configuration
+
+1. Create/verify a recurring Stripe Price and set `STRIPE_PRICE_ID_SUBSCRIPTION`.
+2. Register webhook endpoint:
+   - URL: `https://<your-domain>/api/stripe-webhook`
+   - Events:
+     - `checkout.session.completed`
+     - `customer.subscription.created`
+     - `customer.subscription.updated`
+     - `customer.subscription.deleted`
+     - `customer.subscription.trial_will_end`
+     - `invoice.finalized`
+     - `invoice.paid`
+     - `invoice.payment_failed`
+3. Copy webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+### Pre-Deploy Validation
+
+1. Confirm environment separation:
+   - test keys in non-prod, live keys in prod.
+2. Run checks:
+   - `pnpm check`
+   - `pnpm typecheck`
+   - `pnpm test`
+3. Verify webhook delivery health in Stripe dashboard.
+4. Verify failed webhook queue is empty via `stripe_webhook_failures` table.
+
+### Incident Recovery
+
+1. Inspect `stripe_webhook_failures` and `billing_alerts` tables.
+2. Replay failed event:
+   - call `POST /api/stripe-webhook/replay` with:
+     - header `x-webhook-replay-token: <STRIPE_WEBHOOK_REPLAY_TOKEN>`
+     - body `{ "eventId": "evt_..." }`
+3. Confirm event transitions to `processed` in `stripe_events`.
 
 ## Troubleshooting
 

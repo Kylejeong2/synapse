@@ -59,10 +59,28 @@ export default defineSchema({
     currentPeriodStart: v.number(), // Unix timestamp in milliseconds
     currentPeriodEnd: v.number(), // Unix timestamp in milliseconds
     includedTokenCredit: v.number(), // $10 in tokens (dollar amount)
+    monthlySpendCap: v.optional(v.number()), // Optional hard spend cap in USD per cycle
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    lastInvoicePaymentStatus: v.optional(
+      v.union(
+        v.literal('paid'),
+        v.literal('failed'),
+        v.literal('open'),
+      ),
+    ),
     planType: v.literal('paid'),
   })
     .index('userId', ['userId'])
     .index('stripeSubscriptionId', ['stripeSubscriptionId'])
+    .index('stripeCustomerId', ['stripeCustomerId']),
+
+  billing_customers: defineTable({
+    userId: v.string(),
+    stripeCustomerId: v.string(),
+    email: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index('userId', ['userId'])
     .index('stripeCustomerId', ['stripeCustomerId']),
 
   usage_records: defineTable({
@@ -130,8 +148,50 @@ export default defineSchema({
     eventId: v.string(), // Stripe event ID for idempotency
     type: v.string(), // Stripe event type
     createdAt: v.number(), // Stripe event creation timestamp in ms
-    processedAt: v.number(), // Local processing timestamp in ms
+    status: v.union(
+      v.literal('processing'),
+      v.literal('processed'),
+      v.literal('failed'),
+    ),
+    processedAt: v.optional(v.number()), // Local processing timestamp in ms
+    lastError: v.optional(v.string()),
+    attempts: v.number(),
+    lastAttemptAt: v.number(),
   })
     .index('eventId', ['eventId'])
+    .index('createdAt', ['createdAt'])
+    .index('status', ['status']),
+
+  stripe_webhook_failures: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+    payload: v.optional(v.string()),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    retryCount: v.number(),
+    lastError: v.string(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('eventId', ['eventId'])
+    .index('resolvedAt', ['resolvedAt']),
+
+  billing_alerts: defineTable({
+    source: v.union(
+      v.literal('webhook'),
+      v.literal('overage_cron'),
+      v.literal('invoice'),
+    ),
+    severity: v.union(
+      v.literal('info'),
+      v.literal('warning'),
+      v.literal('error'),
+    ),
+    message: v.string(),
+    context: v.optional(v.string()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('source', ['source'])
+    .index('severity', ['severity'])
     .index('createdAt', ['createdAt']),
 })

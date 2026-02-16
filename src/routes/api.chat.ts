@@ -21,8 +21,8 @@ import {
 	logger,
 	Timer,
 } from "../lib/logger";
-import { calculateTotalTokens, type TokenUsage } from "../lib/tokens";
 import { calculateTokenCost } from "../lib/tokenPricing";
+import { calculateTotalTokens, type TokenUsage } from "../lib/tokens";
 
 /**
  * Convex HTTP client for server-side database operations
@@ -191,15 +191,21 @@ export const Route = createFileRoute("/api/chat")({
 							JSON.stringify({
 								error: "Token limit exceeded",
 								reason: tokenLimitCheck.reason,
-								...(tokenLimitCheck.reason === "credit_exceeded"
+								...(tokenLimitCheck.reason === "spend_cap_exceeded"
 									? {
-											remainingCredit: tokenLimitCheck.remainingCredit,
+											monthlySpendCap: tokenLimitCheck.monthlySpendCap,
+											currentSpend: tokenLimitCheck.currentSpend,
 											estimatedCost: tokenLimitCheck.estimatedCost,
 										}
-									: {
-											tokensUsed: tokenLimitCheck.tokensUsed,
-											maxTokens: tokenLimitCheck.maxTokens,
-										}),
+									: tokenLimitCheck.reason === "credit_exceeded"
+										? {
+												remainingCredit: tokenLimitCheck.remainingCredit,
+												estimatedCost: tokenLimitCheck.estimatedCost,
+											}
+										: {
+												tokensUsed: tokenLimitCheck.tokensUsed,
+												maxTokens: tokenLimitCheck.maxTokens,
+											}),
 								upgradeRequired: true,
 							}),
 							{

@@ -8,6 +8,7 @@ vi.mock('convex/browser', () => ({
 	ConvexHttpClient: vi.fn(function ConvexHttpClientMock() {
 		return {
 			mutation: mutationMock,
+			query: vi.fn(async () => null),
 		};
 	}),
 }));
@@ -19,8 +20,13 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../convex/_generated/api', () => ({
 	api: {
 		stripeWebhooks: {
-			registerWebhookEvent: 'stripeWebhooks:registerWebhookEvent',
+			beginWebhookEventProcessing: 'stripeWebhooks:beginWebhookEventProcessing',
+			markWebhookEventProcessed: 'stripeWebhooks:markWebhookEventProcessed',
+			markWebhookEventFailed: 'stripeWebhooks:markWebhookEventFailed',
 			upsertSubscriptionFromStripe: 'stripeWebhooks:upsertSubscriptionFromStripe',
+			updateSubscriptionByStripeIds: 'stripeWebhooks:updateSubscriptionByStripeIds',
+			getUserIdByStripeCustomerId: 'stripeWebhooks:getUserIdByStripeCustomerId',
+			logBillingAlert: 'stripeWebhooks:logBillingAlert',
 		},
 	},
 }));
@@ -79,7 +85,7 @@ describe('POST /api/stripe-webhook', () => {
 			created: 1,
 			data: { object: {} },
 		});
-		mutationMock.mockResolvedValueOnce({ accepted: false });
+		mutationMock.mockResolvedValueOnce({ proceed: false, state: 'processed' });
 
 		const post = await getPostHandler();
 		const response = await post({
@@ -96,8 +102,49 @@ describe('POST /api/stripe-webhook', () => {
 			duplicate: true,
 		});
 		expect(mutationMock).toHaveBeenCalledWith(
-			'stripeWebhooks:registerWebhookEvent',
+			'stripeWebhooks:beginWebhookEventProcessing',
 			expect.objectContaining({ eventId: 'evt_1' }),
+		);
+	});
+
+	it('processes invoice.payment_failed and marks event processed', async () => {
+		constructEventMock.mockReturnValue({
+			id: 'evt_2',
+			type: 'invoice.payment_failed',
+			created: 2,
+			data: {
+				object: {
+					subscription: 'sub_test',
+					customer: 'cus_test',
+				},
+			},
+		});
+		mutationMock
+			.mockResolvedValueOnce({ proceed: true, state: 'new' })
+			.mockResolvedValueOnce({ updated: true })
+			.mockResolvedValueOnce({ success: true });
+
+		const post = await getPostHandler();
+		const response = await post({
+			request: new Request('http://localhost/api/stripe-webhook', {
+				method: 'POST',
+				headers: { 'stripe-signature': 'sig_test' },
+				body: JSON.stringify({ id: 'evt_2' }),
+			}),
+		});
+
+		expect(response.status).toBe(200);
+		expect(mutationMock).toHaveBeenCalledWith(
+			'stripeWebhooks:updateSubscriptionByStripeIds',
+			expect.objectContaining({
+				stripeSubscriptionId: 'sub_test',
+				status: 'past_due',
+				lastInvoicePaymentStatus: 'failed',
+			}),
+		);
+		expect(mutationMock).toHaveBeenCalledWith(
+			'stripeWebhooks:markWebhookEventProcessed',
+			{ eventId: 'evt_2' },
 		);
 	});
 });

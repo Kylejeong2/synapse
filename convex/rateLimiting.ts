@@ -74,12 +74,26 @@ export const checkTokenLimit = query({
 			// Estimate cost for requested tokens (rough estimate in USD per 1k tokens)
 			const estimatedCost =
 				(requestedTokens / 1000) * PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD;
+			const monthlySpendCap = subscription.monthlySpendCap;
+			if (
+				monthlySpendCap !== undefined &&
+				totalCost + estimatedCost > monthlySpendCap
+			) {
+				return {
+					allowed: false,
+					reason: 'spend_cap_exceeded',
+					monthlySpendCap,
+					currentSpend: totalCost,
+					estimatedCost,
+				};
+			}
 
 			return {
 				allowed: true,
 				remainingCredit,
 				estimatedCost,
 				projectedOverage: Math.max(0, estimatedCost - Math.max(remainingCredit, 0)),
+				monthlySpendCap,
 			};
 		}
 
@@ -146,6 +160,7 @@ export const getUsageStats = query({
 						subscription.includedTokenCredit ??
 						DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
 					overageAmount: 0,
+					monthlySpendCap: subscription.monthlySpendCap,
 					periodStart: subscription.currentPeriodStart,
 					periodEnd: subscription.currentPeriodEnd,
 				};
@@ -166,6 +181,7 @@ export const getUsageStats = query({
 					),
 					includedCredit: currentCycle.includedCredit,
 				overageAmount,
+				monthlySpendCap: subscription.monthlySpendCap,
 				periodStart: currentCycle.periodStart,
 				periodEnd: currentCycle.periodEnd,
 			};

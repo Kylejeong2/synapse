@@ -9,7 +9,7 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "test:stripe": "vitest run tests/stripe*.test.ts tests/apiCreateCheckoutRoute*.test.ts",
+    "test:stripe": "vitest run tests/stripe*.test.ts tests/apiCreateCheckoutRoute*.test.ts tests/apiStripeWebhook*.test.ts tests/apiBillingManagementRoutes.test.ts tests/billingFlow.integration.test.ts",
     "test:stripe:live": "RUN_STRIPE_LIVE_TESTS=1 STRIPE_ALLOW_NETWORK_TESTS=1 vitest run tests/stripeLive.integration.test.ts",
     "test:watch": "vitest",
     "prepare": "husky",

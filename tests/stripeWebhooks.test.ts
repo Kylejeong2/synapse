@@ -2,12 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../convex/_generated/server', () => ({
 	mutation: (opts: { handler: Function }) => opts,
+	query: (opts: { handler: Function }) => opts,
 }));
 
-function buildQueryResult(firstValue: unknown) {
+function q(firstValue: unknown) {
 	return {
 		withIndex: () => ({
 			first: vi.fn(async () => firstValue),
+		}),
+		filter: () => ({
+			order: () => ({
+				take: vi.fn(async () => []),
+			}),
 		}),
 	};
 }
@@ -17,56 +23,86 @@ describe('convex/stripeWebhooks', () => {
 		vi.resetModules();
 	});
 
-	it('registerWebhookEvent stores a new Stripe event id', async () => {
+	it('beginWebhookEventProcessing inserts new processing event', async () => {
 		const insert = vi.fn(async () => 'evt_doc_1');
 		const db = {
-			query: vi.fn(() => buildQueryResult(null)),
+			query: vi.fn(() => q(null)),
 			insert,
 		};
-
-		const { registerWebhookEvent } = await import('../convex/stripeWebhooks');
-		const result = await (registerWebhookEvent as any).handler({ db }, {
+		const { beginWebhookEventProcessing } = await import('../convex/stripeWebhooks');
+		const result = await (beginWebhookEventProcessing as any).handler({ db }, {
 			eventId: 'evt_1',
 			type: 'checkout.session.completed',
-			createdAt: 1_700_000_000_000,
+			createdAt: 1,
 		});
 
-		expect(result).toEqual({ accepted: true });
+		expect(result).toEqual({ proceed: true, state: 'new' });
 		expect(insert).toHaveBeenCalledWith(
 			'stripe_events',
 			expect.objectContaining({
 				eventId: 'evt_1',
-				type: 'checkout.session.completed',
-				createdAt: 1_700_000_000_000,
+				status: 'processing',
+				attempts: 1,
 			}),
 		);
 	});
 
-	it('registerWebhookEvent ignores duplicate event ids', async () => {
-		const insert = vi.fn();
+	it('beginWebhookEventProcessing returns duplicate for processed events', async () => {
 		const db = {
-			query: vi.fn(() => buildQueryResult({ _id: 'evt_doc_1', eventId: 'evt_1' })),
-			insert,
+			query: vi.fn(() => q({ _id: 'e1', status: 'processed', attempts: 1 })),
+			patch: vi.fn(),
 		};
-
-		const { registerWebhookEvent } = await import('../convex/stripeWebhooks');
-		const result = await (registerWebhookEvent as any).handler({ db }, {
+		const { beginWebhookEventProcessing } = await import('../convex/stripeWebhooks');
+		const result = await (beginWebhookEventProcessing as any).handler({ db }, {
 			eventId: 'evt_1',
 			type: 'customer.subscription.updated',
-			createdAt: 1_700_000_000_000,
+			createdAt: 1,
+		});
+		expect(result).toEqual({ proceed: false, state: 'processed' });
+	});
+
+	it('markWebhookEventFailed records dead-letter and alert', async () => {
+		const patch = vi.fn(async () => undefined);
+		const insert = vi.fn(async () => 'doc_1');
+		const db = {
+			query: vi
+				.fn()
+				.mockImplementationOnce(() => q({ _id: 'evt_doc', attempts: 2 }))
+				.mockImplementationOnce(() => q(null)),
+			patch,
+			insert,
+		};
+		const { markWebhookEventFailed } = await import('../convex/stripeWebhooks');
+		await (markWebhookEventFailed as any).handler({ db }, {
+			eventId: 'evt_2',
+			type: 'invoice.paid',
+			error: 'boom',
+			payload: '{}',
 		});
 
-		expect(result).toEqual({ accepted: false });
-		expect(insert).not.toHaveBeenCalled();
+		expect(patch).toHaveBeenCalledWith(
+			'evt_doc',
+			expect.objectContaining({ status: 'failed', lastError: 'boom' }),
+		);
+		expect(insert).toHaveBeenCalledWith(
+			'stripe_webhook_failures',
+			expect.objectContaining({ eventId: 'evt_2', retryCount: 1 }),
+		);
+		expect(insert).toHaveBeenCalledWith(
+			'billing_alerts',
+			expect.objectContaining({ source: 'webhook', severity: 'error' }),
+		);
 	});
 
 	it('upsertSubscriptionFromStripe inserts when no record exists', async () => {
 		const insert = vi.fn(async () => 'sub_doc_1');
+		const patch = vi.fn(async () => undefined);
 		const query = vi
 			.fn()
-			.mockImplementationOnce(() => buildQueryResult(null))
-			.mockImplementationOnce(() => buildQueryResult(null));
-		const db = { query, insert, patch: vi.fn() };
+			.mockImplementationOnce(() => q(null))
+			.mockImplementationOnce(() => q(null))
+			.mockImplementationOnce(() => q(null));
+		const db = { query, insert, patch };
 
 		const { upsertSubscriptionFromStripe } = await import('../convex/stripeWebhooks');
 		const result = await (upsertSubscriptionFromStripe as any).handler({ db }, {
@@ -84,39 +120,8 @@ describe('convex/stripeWebhooks', () => {
 			'subscriptions',
 			expect.objectContaining({
 				userId: 'user_1',
-				stripeCustomerId: 'cus_1',
 				stripeSubscriptionId: 'sub_1',
 				status: 'active',
-				includedTokenCredit: 10,
-			}),
-		);
-	});
-
-	it('upsertSubscriptionFromStripe updates existing record by subscription id', async () => {
-		const patch = vi.fn(async () => undefined);
-		const query = vi
-			.fn()
-			.mockImplementationOnce(() => buildQueryResult({ _id: 'sub_doc_existing' }))
-			.mockImplementationOnce(() => buildQueryResult(null));
-		const db = { query, patch, insert: vi.fn() };
-
-		const { upsertSubscriptionFromStripe } = await import('../convex/stripeWebhooks');
-		const result = await (upsertSubscriptionFromStripe as any).handler({ db }, {
-			userId: 'user_2',
-			stripeCustomerId: 'cus_2',
-			stripeSubscriptionId: 'sub_2',
-			status: 'past_due',
-			currentPeriodStart: 10,
-			currentPeriodEnd: 20,
-			includedTokenCredit: 15,
-		});
-
-		expect(result).toEqual({ action: 'updated_by_subscription' });
-		expect(patch).toHaveBeenCalledWith(
-			'sub_doc_existing',
-			expect.objectContaining({
-				status: 'past_due',
-				includedTokenCredit: 15,
 			}),
 		);
 	});

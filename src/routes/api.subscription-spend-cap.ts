@@ -7,47 +7,36 @@ const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
 if (!CONVEX_URL) {
 	throw new Error("VITE_CONVEX_URL environment variable is not set");
 }
+
 const convexClient = new ConvexHttpClient(CONVEX_URL);
 
-export const Route = createFileRoute("/api/create-checkout")({
+export const Route = createFileRoute("/api/subscription-spend-cap")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
 				try {
 					const auth = await requireClerkUserId(request);
 					if ("response" in auth) return auth.response;
-					const { userId } = auth;
 
 					const body = await request.json();
-					const { userEmail } = body;
+					const monthlySpendCap =
+						typeof body?.monthlySpendCap === "number"
+							? body.monthlySpendCap
+							: undefined;
 
 					const result = await convexClient.mutation(
-						api.subscriptions.createCheckoutSession,
-						{
-							userId,
-							userEmail,
-						},
+						api.subscriptions.setMonthlySpendCap,
+						{ userId: auth.userId, monthlySpendCap },
 					);
 
-					if (!result.url) {
-						return new Response(
-							JSON.stringify({ error: "Failed to create checkout session" }),
-							{
-								status: 500,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					}
-
-					return new Response(JSON.stringify({ url: result.url }), {
+					return new Response(JSON.stringify(result), {
 						status: 200,
 						headers: { "Content-Type": "application/json" },
 					});
 				} catch (error) {
-					console.error("Error creating checkout session:", error);
 					return new Response(
 						JSON.stringify({
-							error: "Failed to create checkout session",
+							error: "Failed to update spend cap",
 							details: error instanceof Error ? error.message : String(error),
 						}),
 						{

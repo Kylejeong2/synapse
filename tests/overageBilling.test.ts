@@ -31,6 +31,7 @@ vi.mock("../convex/_generated/api", () => ({
 		},
 		billing: {
 			processOverageBilling: "billing:processOverageBilling",
+			logBillingAlert: "billing:logBillingAlert",
 		},
 	},
 }));
@@ -236,5 +237,27 @@ describe("processOverageBilling", () => {
 		expect(mockInvoiceItemsCreate).toHaveBeenCalledTimes(2);
 		expect(mockInvoicesCreate).toHaveBeenCalledTimes(2);
 		expect(runMutationMock).toHaveBeenCalledTimes(6); // 3 pending locks + 3 completion mutations
+	});
+
+	it("is idempotent across repeated runs for the same cycle", async () => {
+		const cycle = makeCycle({ _id: "cycle_repeat", overageAmount: 4.5 });
+		runQueryMock.mockResolvedValue(cycle ? [cycle] : []);
+
+		let lockCalls = 0;
+		runMutationMock.mockImplementation(async (ref: string) => {
+			if (ref === "usage:markBillingCyclePendingIfActive") {
+				lockCalls += 1;
+				return { updated: lockCalls === 1 };
+			}
+			return undefined;
+		});
+
+		const first = await handler(createCtx());
+		const second = await handler(createCtx());
+
+		expect(first).toEqual({ processed: 1, invoiced: 1, errors: 0 });
+		expect(second).toEqual({ processed: 1, invoiced: 0, errors: 0 });
+		expect(mockInvoiceItemsCreate).toHaveBeenCalledTimes(1);
+		expect(mockInvoicesCreate).toHaveBeenCalledTimes(1);
 	});
 });

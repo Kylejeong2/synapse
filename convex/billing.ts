@@ -1,6 +1,7 @@
-import { internalAction } from './_generated/server';
+import { internalAction, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
+import { v } from 'convex/values';
 import { MIN_OVERAGE_INVOICE_THRESHOLD_USD } from './pricing';
 import { stripe } from './stripe';
 
@@ -88,6 +89,15 @@ export const processOverageBilling = internalAction({
 					billingCycleId: cycle._id,
 					status: 'active',
 				});
+				await ctx.runMutation(internal.billing.logBillingAlert, {
+					source: 'overage_cron',
+					severity: 'error',
+					message: `Failed overage billing for cycle ${cycle._id}`,
+					context: JSON.stringify({
+						billingCycleId: cycle._id,
+						error: error instanceof Error ? error.message : String(error),
+					}),
+				});
 				console.error(
 					`Failed to process overage billing for cycle ${cycle._id}:`,
 					error instanceof Error ? error.message : String(error),
@@ -100,5 +110,31 @@ export const processOverageBilling = internalAction({
 			invoiced,
 			errors,
 		};
+	},
+});
+
+export const logBillingAlert = internalMutation({
+	args: {
+		source: v.union(
+			v.literal('webhook'),
+			v.literal('overage_cron'),
+			v.literal('invoice'),
+		),
+		severity: v.union(
+			v.literal('info'),
+			v.literal('warning'),
+			v.literal('error'),
+		),
+		message: v.string(),
+		context: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		await ctx.db.insert('billing_alerts', {
+			source: args.source,
+			severity: args.severity,
+			message: args.message,
+			context: args.context,
+			createdAt: Date.now(),
+		});
 	},
 });
