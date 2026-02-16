@@ -28,6 +28,26 @@
 	font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
 }
 
+.dark .landing {
+	--landing-bg: #2a2623;
+	--landing-surface: #332e2b;
+	--landing-subtle: #2f2a27;
+	--landing-border: #4a443f;
+	--landing-muted-border: #5a534d;
+
+	--landing-dark-bg: #363230;
+	--landing-dark-surface: #3d3936;
+	--landing-dark-border: #5a534d;
+
+	--landing-text: #f0ece4;
+	--landing-text-secondary: #b5aea6;
+	--landing-text-tertiary: #9c958e;
+	--landing-text-on-dark: #f0ece4;
+	--landing-text-muted-dark: #9c958e;
+
+	--landing-accent: #d4773a;
+}
+
 /* Shared section padding */
 .landing-section {
 	padding-left: 1.5rem;

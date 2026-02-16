@@ -23,6 +23,7 @@ import {
 	useConversations,
 	useCreateConversation,
 } from "@/hooks/useConversation";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { HeaderUser } from "@/integrations/clerk/header-user";
 import { log } from "@/lib/logger";
 
@@ -147,7 +148,10 @@ export function AppSidebar() {
 			</SidebarContent>
 
 			<SidebarFooter className="border-t p-4">
-				<HeaderUser />
+				<div className="flex items-center justify-between">
+					<HeaderUser />
+					<ThemeToggle />
+				</div>
 			</SidebarFooter>
 		</Sidebar>
 	);

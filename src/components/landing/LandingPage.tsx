@@ -15,7 +15,7 @@ export function LandingPage() {
 	const openSignIn = () => setShowSignIn(true);
 
 	return (
-		<div className="landing min-h-screen bg-[#faf8f3] text-[#1a1715]">
+		<div className="landing min-h-screen bg-[var(--landing-bg)] text-[var(--landing-text)]">
 			<Nav onSignIn={openSignIn} />
 			<Hero onSignIn={openSignIn} />
 			<Stats />
