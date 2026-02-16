@@ -1,1 +1,2 @@
 pnpm pre-commit
+pnpm typecheck
