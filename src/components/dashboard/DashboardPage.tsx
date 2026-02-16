@@ -1,5 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
+import type { Id } from "convex/_generated/dataModel";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
 	useConversations,
@@ -14,7 +15,7 @@ import {
 } from "@/hooks/useDashboard";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { log } from "@/lib/logger";
-import { DashboardSidebar, type DashboardSection } from "./DashboardSidebar";
+import { type DashboardSection, DashboardSidebar } from "./DashboardSidebar";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { ConversationsSection } from "./sections/ConversationsSection";
 import { OverviewSection } from "./sections/OverviewSection";
@@ -69,7 +70,9 @@ export function DashboardPage() {
 	) => {
 		e.stopPropagation();
 		try {
-			await deleteConversation({ conversationId });
+			await deleteConversation({
+				conversationId: conversationId as Id<"conversations">,
+			});
 		} catch (error) {
 			log.error(
 				"Failed to delete conversation",
@@ -81,7 +84,9 @@ export function DashboardPage() {
 
 	const handleTogglePin = async (conversationId: string) => {
 		try {
-			await togglePin({ conversationId });
+			await togglePin({
+				conversationId: conversationId as Id<"conversations">,
+			});
 		} catch (error) {
 			log.error(
 				"Failed to toggle pin",
@@ -93,7 +98,10 @@ export function DashboardPage() {
 
 	const handleUpdateTags = async (conversationId: string, tags: string[]) => {
 		try {
-			await updateTags({ conversationId, tags });
+			await updateTags({
+				conversationId: conversationId as Id<"conversations">,
+				tags,
+			});
 		} catch (error) {
 			log.error(
 				"Failed to update tags",

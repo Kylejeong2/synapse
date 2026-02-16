@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Doc } from "convex/_generated/dataModel";
 import { Home, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,7 +24,6 @@ import {
 	useConversations,
 	useCreateConversation,
 } from "@/hooks/useConversation";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { HeaderUser } from "@/integrations/clerk/header-user";
 import { log } from "@/lib/logger";
 

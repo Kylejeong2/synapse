@@ -144,17 +144,17 @@ export function TagsSection({
 							className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--db-accent)] text-[var(--db-text-on-dark)] text-xs font-medium"
 						>
 							{tag}
-								<button
-									type="button"
-									onClick={() => handleTagToggle(tag)}
-									className="hover:bg-[var(--db-on-dark-overlay)] rounded-full p-0.5 transition-colors"
-								>
-									<span className="sr-only">Remove</span>
-									<svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
-										<title>Remove tag</title>
-										<path
-											d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
-											stroke="currentColor"
+							<button
+								type="button"
+								onClick={() => handleTagToggle(tag)}
+								className="hover:bg-[var(--db-on-dark-overlay)] rounded-full p-0.5 transition-colors"
+							>
+								<span className="sr-only">Remove</span>
+								<svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
+									<title>Remove tag</title>
+									<path
+										d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
+										stroke="currentColor"
 										strokeWidth="1.5"
 										strokeLinecap="round"
 									/>
@@ -173,8 +173,8 @@ export function TagsSection({
 			)}
 
 			{/* Filtered conversations */}
-			{selectedTags.length > 0 && (
-				filteredConversations.length > 0 ? (
+			{selectedTags.length > 0 &&
+				(filteredConversations.length > 0 ? (
 					<ConversationGrid
 						conversations={filteredConversations}
 						viewMode="grid"
@@ -190,8 +190,7 @@ export function TagsSection({
 							No conversations match the selected tags
 						</p>
 					</div>
-				)
-			)}
+				))}
 		</div>
 	);
 }
