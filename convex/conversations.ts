@@ -346,6 +346,102 @@ export const deleteConversation = mutation({
 })
 
 // Update the default model for a conversation
+// Toggle pin status on a conversation
+export const togglePin = mutation({
+  args: {
+    conversationId: v.id('conversations'),
+    requestId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+
+    try {
+      const { conversationId } = args
+      const conversation = await ctx.db.get(conversationId)
+      if (!conversation) throw new Error('Conversation not found')
+
+      await ctx.db.patch(conversationId, { isPinned: !conversation.isPinned })
+
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'conversations.togglePin',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: conversationId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'conversations.togglePin',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: args.conversationId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
+  },
+})
+
+// Update tags on a conversation
+export const updateTags = mutation({
+  args: {
+    conversationId: v.id('conversations'),
+    tags: v.array(v.string()),
+    requestId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const operationId = generateOperationId()
+    const timer = new ConvexTimer()
+
+    try {
+      const { conversationId, tags } = args
+      await ctx.db.patch(conversationId, { tags })
+
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'conversations.updateTags',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: conversationId,
+        status: 'success',
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+    } catch (error) {
+      logConvexOperation({
+        operation_id: operationId,
+        request_id: args.requestId,
+        operation_type: 'mutation',
+        operation_name: 'conversations.updateTags',
+        timestamp: Date.now(),
+        duration_ms: timer.elapsed(),
+        conversation_id: args.conversationId,
+        status: 'error',
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error),
+        service_name: 'synapse-convex',
+        environment: process.env.NODE_ENV || 'development',
+      })
+      throw error
+    }
+  },
+})
+
 export const updateDefaultModel = mutation({
   args: {
     conversationId: v.id('conversations'),
