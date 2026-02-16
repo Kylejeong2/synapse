@@ -45,13 +45,14 @@ function formatRelativeTime(timestamp: number) {
 	return "just now";
 }
 
-function DeleteDialog({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
+function DeleteDialog({
+	onDelete,
+}: {
+	onDelete: (e: React.MouseEvent) => void;
+}) {
 	return (
 		<AlertDialog>
-			<AlertDialogTrigger
-				asChild
-				onClick={(e) => e.stopPropagation()}
-			>
+			<AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
 				<button
 					type="button"
 					className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--db-surface)] transition-all"
@@ -63,8 +64,8 @@ function DeleteDialog({ onDelete }: { onDelete: (e: React.MouseEvent) => void })
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete conversation?</AlertDialogTitle>
 					<AlertDialogDescription>
-						This will permanently delete this conversation and all its
-						messages. This action cannot be undone.
+						This will permanently delete this conversation and all its messages.
+						This action cannot be undone.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
@@ -81,7 +82,13 @@ function DeleteDialog({ onDelete }: { onDelete: (e: React.MouseEvent) => void })
 	);
 }
 
-function PinButton({ isPinned, onTogglePin }: { isPinned?: boolean; onTogglePin?: () => void }) {
+function PinButton({
+	isPinned,
+	onTogglePin,
+}: {
+	isPinned?: boolean;
+	onTogglePin?: () => void;
+}) {
 	if (!onTogglePin) return null;
 	return (
 		<button
@@ -105,7 +112,11 @@ function SelectCheckbox({
 	isSelected,
 	showCheckbox,
 	onToggleSelect,
-}: { isSelected?: boolean; showCheckbox?: boolean; onToggleSelect?: () => void }) {
+}: {
+	isSelected?: boolean;
+	showCheckbox?: boolean;
+	onToggleSelect?: () => void;
+}) {
 	if (!onToggleSelect) return null;
 	return (
 		<button
@@ -124,7 +135,14 @@ function SelectCheckbox({
 		>
 			{isSelected && (
 				<svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-					<path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					<title>Selected</title>
+					<path
+						d="M2.5 6L5 8.5L9.5 3.5"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
 				</svg>
 			)}
 		</button>
@@ -149,16 +167,28 @@ export function ConversationCard({
 }: ConversationCardProps) {
 	if (viewMode === "list") {
 		return (
+			/* biome-ignore lint/a11y/useSemanticElements: Card container includes nested interactive controls. */
 			<div
+				role="button"
+				tabIndex={0}
 				onClick={onClick}
-				onKeyDown={(e) => e.key === "Enter" && onClick()}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						onClick();
+					}
+				}}
 				className={`group flex items-center gap-4 px-5 py-4 rounded-lg border hover:border-[var(--db-accent-border)] hover:shadow-md cursor-pointer transition-all duration-200 ${
 					isSelected
 						? "bg-[var(--db-accent-light)] border-[var(--db-accent-border)]"
 						: "bg-[var(--db-surface)]/60 border-[var(--db-border)]"
 				}`}
 			>
-				<SelectCheckbox isSelected={isSelected} showCheckbox={showCheckbox} onToggleSelect={onToggleSelect} />
+				<SelectCheckbox
+					isSelected={isSelected}
+					showCheckbox={showCheckbox}
+					onToggleSelect={onToggleSelect}
+				/>
 				<div className="h-9 w-9 rounded-lg bg-[var(--db-accent-light)] flex items-center justify-center border border-[var(--db-accent-border)] group-hover:bg-[var(--db-accent)]/15 transition-colors shrink-0">
 					<MessageSquare className="h-4 w-4 text-[var(--db-accent)]" />
 				</div>
@@ -194,9 +224,17 @@ export function ConversationCard({
 
 	return (
 		<TreePreviewPopover conversationId={id}>
+			{/* biome-ignore lint/a11y/useSemanticElements: Card container includes nested interactive controls. */}
 			<div
+				role="button"
+				tabIndex={0}
 				onClick={onClick}
-				onKeyDown={(e) => e.key === "Enter" && onClick()}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						onClick();
+					}
+				}}
 				className={`group relative rounded-lg border hover:border-[var(--db-accent-border)] hover:shadow-lg hover:shadow-[var(--db-accent)]/5 cursor-pointer transition-all duration-300 backdrop-blur-sm ${
 					isSelected
 						? "bg-[var(--db-accent-light)] border-[var(--db-accent-border)]"
@@ -206,7 +244,11 @@ export function ConversationCard({
 				<div className="p-5">
 					<div className="flex justify-between items-start mb-4">
 						<div className="flex items-center gap-2">
-							<SelectCheckbox isSelected={isSelected} showCheckbox={showCheckbox} onToggleSelect={onToggleSelect} />
+							<SelectCheckbox
+								isSelected={isSelected}
+								showCheckbox={showCheckbox}
+								onToggleSelect={onToggleSelect}
+							/>
 							<div className="h-10 w-10 rounded-lg bg-[var(--db-accent-light)] flex items-center justify-center border border-[var(--db-accent-border)] group-hover:bg-[var(--db-accent)]/15 transition-colors">
 								<MessageSquare className="h-5 w-5 text-[var(--db-accent)]" />
 							</div>

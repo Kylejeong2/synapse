@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
 	useConversations,
 	useCreateConversation,
@@ -8,7 +8,10 @@ import {
 	useTogglePin,
 	useUpdateTags,
 } from "@/hooks/useConversation";
-import { useDashboardStats, useRecentConversations } from "@/hooks/useDashboard";
+import {
+	useDashboardStats,
+	useRecentConversations,
+} from "@/hooks/useDashboard";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { log } from "@/lib/logger";
 import { DashboardSidebar, type DashboardSection } from "./DashboardSidebar";
@@ -31,11 +34,12 @@ export function DashboardPage() {
 	const updateTags = useUpdateTags();
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
-	const [activeSection, setActiveSection] = useState<DashboardSection>("overview");
+	const [activeSection, setActiveSection] =
+		useState<DashboardSection>("overview");
 	const [isCreating, setIsCreating] = useState(false);
 	const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-	const handleNewConversation = async () => {
+	const handleNewConversation = useCallback(async () => {
 		if (!user?.id) return;
 		setIsCreating(true);
 		try {
@@ -57,7 +61,7 @@ export function DashboardPage() {
 		} finally {
 			setIsCreating(false);
 		}
-	};
+	}, [createConversation, navigate, user?.id]);
 
 	const handleDeleteConversation = async (
 		conversationId: string,
@@ -99,12 +103,15 @@ export function DashboardPage() {
 		}
 	};
 
-	const navigateToChat = (id: string) =>
-		navigate({
-			to: "/chat/$id",
-			params: { id },
-			search: { fromNode: undefined },
-		});
+	const navigateToChat = useCallback(
+		(id: string) =>
+			navigate({
+				to: "/chat/$id",
+				params: { id },
+				search: { fromNode: undefined },
+			}),
+		[navigate],
+	);
 
 	const pinnedCount = useMemo(
 		() => conversations?.filter((c) => c.isPinned).length ?? 0,
@@ -122,7 +129,7 @@ export function DashboardPage() {
 				setTimeout(() => searchInputRef.current?.focus(), 50);
 			},
 			onOpenRecent: (index: number) => {
-				if (conversations && conversations[index]) {
+				if (conversations?.[index]) {
 					navigateToChat(conversations[index]._id);
 				}
 			},
@@ -131,8 +138,7 @@ export function DashboardPage() {
 				setShortcutsOpen(false);
 			},
 		}),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[conversations],
+		[conversations, handleNewConversation, navigateToChat],
 	);
 	useKeyboardShortcuts(shortcutHandlers);
 

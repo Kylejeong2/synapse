@@ -10,7 +10,9 @@ export function Footer() {
 					</div>
 					<span className="text-lg font-medium">Synapse</span>
 				</div>
-				<p className="text-base text-[var(--landing-text-tertiary)]">Built for curious minds.</p>
+				<p className="text-base text-[var(--landing-text-tertiary)]">
+					Built for curious minds.
+				</p>
 			</div>
 		</footer>
 	);

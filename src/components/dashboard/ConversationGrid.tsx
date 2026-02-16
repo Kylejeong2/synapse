@@ -49,9 +49,19 @@ export function ConversationGrid({
 						showCheckbox={hasSelection}
 						onClick={() => onConversationClick(conversation._id)}
 						onDelete={(e) => onConversationDelete(conversation._id, e)}
-						onTogglePin={onTogglePin ? () => onTogglePin(conversation._id) : undefined}
-						onUpdateTags={onUpdateTags ? (tags) => onUpdateTags(conversation._id, tags) : undefined}
-						onToggleSelect={onToggleSelect ? () => onToggleSelect(conversation._id) : undefined}
+						onTogglePin={
+							onTogglePin ? () => onTogglePin(conversation._id) : undefined
+						}
+						onUpdateTags={
+							onUpdateTags
+								? (tags) => onUpdateTags(conversation._id, tags)
+								: undefined
+						}
+						onToggleSelect={
+							onToggleSelect
+								? () => onToggleSelect(conversation._id)
+								: undefined
+						}
 						viewMode={viewMode}
 					/>
 				))}
@@ -74,9 +84,17 @@ export function ConversationGrid({
 					showCheckbox={hasSelection}
 					onClick={() => onConversationClick(conversation._id)}
 					onDelete={(e) => onConversationDelete(conversation._id, e)}
-					onTogglePin={onTogglePin ? () => onTogglePin(conversation._id) : undefined}
-					onUpdateTags={onUpdateTags ? (tags) => onUpdateTags(conversation._id, tags) : undefined}
-					onToggleSelect={onToggleSelect ? () => onToggleSelect(conversation._id) : undefined}
+					onTogglePin={
+						onTogglePin ? () => onTogglePin(conversation._id) : undefined
+					}
+					onUpdateTags={
+						onUpdateTags
+							? (tags) => onUpdateTags(conversation._id, tags)
+							: undefined
+					}
+					onToggleSelect={
+						onToggleSelect ? () => onToggleSelect(conversation._id) : undefined
+					}
 					viewMode={viewMode}
 				/>
 			))}

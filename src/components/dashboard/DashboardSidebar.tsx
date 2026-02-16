@@ -1,10 +1,4 @@
-import {
-	LayoutDashboard,
-	MessageSquare,
-	Pin,
-	Plus,
-	Tag,
-} from "lucide-react";
+import { LayoutDashboard, MessageSquare, Pin, Plus, Tag } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export type DashboardSection = "overview" | "conversations" | "pinned" | "tags";

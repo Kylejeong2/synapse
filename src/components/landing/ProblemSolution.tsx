@@ -14,7 +14,9 @@ export function ProblemSolution() {
 
 			<div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-5">
 				<div className="rounded-lg border border-[var(--landing-dark-border)] bg-[var(--landing-dark-surface)] p-6">
-					<p className="text-lg font-medium text-[var(--landing-text-muted-dark)] mb-4">Linear chat</p>
+					<p className="text-lg font-medium text-[var(--landing-text-muted-dark)] mb-4">
+						Linear chat
+					</p>
 					<div className="space-y-2 mb-4">
 						{[1, 2, 3, 4, 5].map((i) => (
 							<div
@@ -24,11 +26,15 @@ export function ProblemSolution() {
 							/>
 						))}
 					</div>
-					<p className="text-base text-[var(--landing-text-secondary)]">One path. Can't go back.</p>
+					<p className="text-base text-[var(--landing-text-secondary)]">
+						One path. Can't go back.
+					</p>
 				</div>
 
 				<div className="rounded-lg border border-[var(--landing-accent)]/40 bg-[var(--landing-dark-surface)] p-6">
-					<p className="text-lg font-medium text-[var(--landing-text-on-dark)] mb-4">Synapse</p>
+					<p className="text-lg font-medium text-[var(--landing-text-on-dark)] mb-4">
+						Synapse
+					</p>
 					<img
 						src="/svgs/branching-conversation.svg"
 						alt="Branching conversation"

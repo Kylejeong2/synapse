@@ -2,12 +2,14 @@ import { Brain, GitFork, MessageSquare, Zap } from "lucide-react";
 import { MODELS } from "@/lib/constants/models";
 
 interface StatsBarProps {
-	stats: {
-		totalConversations: number;
-		totalNodes: number;
-		totalTokens: number;
-		mostUsedModel: string | null;
-	} | undefined;
+	stats:
+		| {
+				totalConversations: number;
+				totalNodes: number;
+				totalTokens: number;
+				mostUsedModel: string | null;
+		  }
+		| undefined;
 }
 
 function formatTokenCount(tokens: number): string {

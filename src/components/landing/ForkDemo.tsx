@@ -7,7 +7,9 @@ export function ForkDemo() {
 				<div className="w-full rounded-lg border border-[var(--landing-border)] bg-[var(--landing-bg)] p-5">
 					<div className="flex items-center gap-3 mb-2">
 						<div className="h-6 w-6 rounded-full bg-[var(--landing-border)] flex items-center justify-center">
-							<span className="text-xs font-bold text-[var(--landing-text-secondary)]">U</span>
+							<span className="text-xs font-bold text-[var(--landing-text-secondary)]">
+								U
+							</span>
 						</div>
 						<span className="text-base font-medium text-[var(--landing-text)]">
 							Explain quantum computing
@@ -24,7 +26,9 @@ export function ForkDemo() {
 					<div className="rounded-lg border-2 border-[var(--landing-accent)] bg-[var(--landing-bg)] p-5">
 						<div className="flex items-center gap-3 mb-2">
 							<div className="h-6 w-6 rounded-full bg-[var(--landing-border)] flex items-center justify-center">
-								<span className="text-xs font-bold text-[var(--landing-text-secondary)]">U</span>
+								<span className="text-xs font-bold text-[var(--landing-text-secondary)]">
+									U
+								</span>
 							</div>
 							<span className="text-base font-medium text-[var(--landing-text)]">
 								How does error correction work?

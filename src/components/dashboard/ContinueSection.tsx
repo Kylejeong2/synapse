@@ -48,11 +48,12 @@ export function ContinueSection({
 			</h2>
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{conversations.map((conv) => (
-					<div
+					<button
 						key={conv._id}
+						type="button"
 						onClick={() => onContinue(conv._id)}
 						onKeyDown={(e) => e.key === "Enter" && onContinue(conv._id)}
-						className="group relative rounded-lg bg-[var(--db-surface)]/80 border border-[var(--db-border)] p-5 cursor-pointer hover:border-[var(--db-accent-border)] hover:shadow-md transition-all duration-200"
+						className="group relative rounded-lg bg-[var(--db-surface)]/80 border border-[var(--db-border)] p-5 cursor-pointer hover:border-[var(--db-accent-border)] hover:shadow-md transition-all duration-200 text-left"
 					>
 						<div className="flex items-start justify-between mb-3">
 							<div className="h-9 w-9 rounded-lg bg-[var(--db-accent)]/15 flex items-center justify-center">
@@ -86,7 +87,7 @@ export function ContinueSection({
 								<ArrowRight className="h-3 w-3" />
 							</div>
 						</div>
-					</div>
+					</button>
 				))}
 			</div>
 		</div>

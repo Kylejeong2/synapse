@@ -1,5 +1,5 @@
 import { Plus, Tag, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TagManagerProps {
 	tags: string[];
@@ -9,6 +9,13 @@ interface TagManagerProps {
 export function TagManager({ tags, onUpdateTags }: TagManagerProps) {
 	const [isAdding, setIsAdding] = useState(false);
 	const [newTag, setNewTag] = useState("");
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (isAdding) {
+			inputRef.current?.focus();
+		}
+	}, [isAdding]);
 
 	const handleAddTag = () => {
 		const trimmed = newTag.trim().toLowerCase();
@@ -24,11 +31,7 @@ export function TagManager({ tags, onUpdateTags }: TagManagerProps) {
 	};
 
 	return (
-		<div
-			className="flex flex-wrap items-center gap-1.5"
-			onClick={(e) => e.stopPropagation()}
-			onKeyDown={() => {}}
-		>
+		<div className="flex flex-wrap items-center gap-1.5">
 			{tags.map((tag) => (
 				<span
 					key={tag}
@@ -61,8 +64,10 @@ export function TagManager({ tags, onUpdateTags }: TagManagerProps) {
 						}
 					}}
 					onBlur={handleAddTag}
+					onClick={(e) => e.stopPropagation()}
+					onMouseDown={(e) => e.stopPropagation()}
 					placeholder="tag name"
-					autoFocus
+					ref={inputRef}
 					className="w-20 px-2 py-0.5 rounded-full border border-[var(--db-border)] bg-[var(--db-subtle)] text-xs text-[var(--db-text)] placeholder:text-[var(--db-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--db-accent-border)]"
 				/>
 			) : (

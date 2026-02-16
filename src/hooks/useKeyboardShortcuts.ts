@@ -49,7 +49,7 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 					// Number keys 1-9 to open recent conversations
 					if (e.key >= "1" && e.key <= "9" && !e.metaKey && !e.ctrlKey) {
 						e.preventDefault();
-						handlers.onOpenRecent(Number.parseInt(e.key) - 1);
+						handlers.onOpenRecent(Number.parseInt(e.key, 10) - 1);
 					}
 					break;
 			}

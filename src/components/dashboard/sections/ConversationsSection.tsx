@@ -127,7 +127,9 @@ export function ConversationsSection({
 
 	const handleDeleteSelected = async () => {
 		for (const id of selectedIds) {
-			onConversationDelete(id, { stopPropagation: () => {} } as React.MouseEvent);
+			onConversationDelete(id, {
+				stopPropagation: () => {},
+			} as React.MouseEvent);
 		}
 		setSelectedIds(new Set());
 	};
@@ -161,7 +163,8 @@ export function ConversationsSection({
 
 			{isSearching && searchResults && (
 				<p className="text-sm text-[var(--db-text-tertiary)] mb-4">
-					{allVisible.length} result{allVisible.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
+					{allVisible.length} result{allVisible.length !== 1 ? "s" : ""} for
+					&ldquo;{searchQuery}&rdquo;
 				</p>
 			)}
 

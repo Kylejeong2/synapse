@@ -70,15 +70,11 @@ function RootComponent() {
  */
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en" suppressHydrationWarning>
-			<head>
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `(function(){try{var t=localStorage.getItem('synapse-theme');var s=window.matchMedia('(prefers-color-scheme:dark)').matches;var d=(t==='dark'||(t!=='light'&&s));if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
-					}}
-				/>
-				<HeadContent />
-			</head>
+			<html lang="en" suppressHydrationWarning>
+				<head>
+					<script>{`(function(){try{var t=localStorage.getItem('synapse-theme');var s=window.matchMedia('(prefers-color-scheme:dark)').matches;var d=(t==='dark'||(t!=='light'&&s));if(d)document.documentElement.classList.add('dark')}catch(e){}})()`}</script>
+					<HeadContent />
+				</head>
 			<body>
 				<ThemeProvider>
 					<ConvexProvider>

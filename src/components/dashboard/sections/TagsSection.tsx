@@ -29,7 +29,8 @@ export function TagsSection({
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
 	const { tagCounts, allTags } = useMemo(() => {
-		if (!conversations) return { tagCounts: new Map<string, number>(), allTags: [] };
+		if (!conversations)
+			return { tagCounts: new Map<string, number>(), allTags: [] };
 		const counts = new Map<string, number>();
 		for (const c of conversations) {
 			for (const tag of c.tags ?? []) {
@@ -72,7 +73,8 @@ export function TagsSection({
 						No tags yet
 					</p>
 					<p className="text-sm text-[var(--db-text-tertiary)]">
-						Add tags to conversations from the Conversations view to organize them
+						Add tags to conversations from the Conversations view to organize
+						them
 					</p>
 				</div>
 			</div>
@@ -142,14 +144,20 @@ export function TagsSection({
 							className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--db-accent)] text-[var(--db-text-on-dark)] text-xs font-medium"
 						>
 							{tag}
-							<button
-								type="button"
-								onClick={() => handleTagToggle(tag)}
-								className="hover:bg-[var(--db-on-dark-overlay)] rounded-full p-0.5 transition-colors"
-							>
-								<span className="sr-only">Remove</span>
-								<svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
-									<path d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+								<button
+									type="button"
+									onClick={() => handleTagToggle(tag)}
+									className="hover:bg-[var(--db-on-dark-overlay)] rounded-full p-0.5 transition-colors"
+								>
+									<span className="sr-only">Remove</span>
+									<svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
+										<title>Remove tag</title>
+										<path
+											d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
+											stroke="currentColor"
+										strokeWidth="1.5"
+										strokeLinecap="round"
+									/>
 								</svg>
 							</button>
 						</span>
@@ -166,25 +174,23 @@ export function TagsSection({
 
 			{/* Filtered conversations */}
 			{selectedTags.length > 0 && (
-				<>
-					{filteredConversations.length > 0 ? (
-						<ConversationGrid
-							conversations={filteredConversations}
-							viewMode="grid"
-							onConversationClick={onConversationClick}
-							onConversationDelete={onConversationDelete}
-							onTogglePin={onTogglePin}
-							onUpdateTags={onUpdateTags}
-						/>
-					) : (
-						<div className="text-center py-12">
-							<MessageSquare className="h-8 w-8 text-[var(--db-text-tertiary)] opacity-40 mx-auto mb-3" />
-							<p className="text-[var(--db-text-secondary)]">
-								No conversations match the selected tags
-							</p>
-						</div>
-					)}
-				</>
+				filteredConversations.length > 0 ? (
+					<ConversationGrid
+						conversations={filteredConversations}
+						viewMode="grid"
+						onConversationClick={onConversationClick}
+						onConversationDelete={onConversationDelete}
+						onTogglePin={onTogglePin}
+						onUpdateTags={onUpdateTags}
+					/>
+				) : (
+					<div className="text-center py-12">
+						<MessageSquare className="h-8 w-8 text-[var(--db-text-tertiary)] opacity-40 mx-auto mb-3" />
+						<p className="text-[var(--db-text-secondary)]">
+							No conversations match the selected tags
+						</p>
+					</div>
+				)
 			)}
 		</div>
 	);

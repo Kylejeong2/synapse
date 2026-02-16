@@ -16,13 +16,14 @@ const SHORTCUTS = [
 export function ShortcutHelpModal({ open, onClose }: ShortcutHelpModalProps) {
 	if (!open) return null;
 
-	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center">
-			<div
-				className="absolute inset-0 bg-[var(--db-dark-bg)]/60 backdrop-blur-sm"
-				onClick={onClose}
-				onKeyDown={() => {}}
-			/>
+		return (
+			<div className="fixed inset-0 z-50 flex items-center justify-center">
+				<button
+					type="button"
+					aria-label="Close shortcuts modal"
+					className="absolute inset-0 bg-[var(--db-dark-bg)]/60 backdrop-blur-sm"
+					onClick={onClose}
+				/>
 			<div className="relative bg-[var(--db-bg)] border border-[var(--db-border)] rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
 				<div className="flex items-center justify-between mb-5">
 					<h2 className="text-lg font-semibold text-[var(--db-text)]">

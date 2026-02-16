@@ -44,7 +44,9 @@ export function ProductMockup() {
 				<div className="flex-1 flex flex-col bg-[var(--landing-bg)]">
 					<div className="px-4 py-2.5 border-b border-[var(--landing-border)] flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<span className="text-xs text-[var(--landing-text-tertiary)]">Forking from:</span>
+							<span className="text-xs text-[var(--landing-text-tertiary)]">
+								Forking from:
+							</span>
 							<span className="text-xs font-medium text-[var(--landing-text)] bg-[var(--landing-surface)] rounded px-2 py-0.5">
 								Use microservices
 							</span>
@@ -81,8 +83,10 @@ export function ProductMockup() {
 							</ul>
 							<p className="text-base leading-relaxed text-[var(--landing-text-secondary)]">
 								My recommendation: start with a{" "}
-								<strong className="text-[var(--landing-text)]">modular monolith</strong>,
-								then extract services as scaling demands...
+								<strong className="text-[var(--landing-text)]">
+									modular monolith
+								</strong>
+								, then extract services as scaling demands...
 							</p>
 						</div>
 

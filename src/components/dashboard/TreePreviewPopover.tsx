@@ -14,21 +14,18 @@ interface TreeNode {
 	depth: number;
 }
 
-function renderMiniTree(
-	canvas: HTMLCanvasElement,
-	nodes: TreeNode[],
-) {
+function renderMiniTree(canvas: HTMLCanvasElement, nodes: TreeNode[]) {
 	const ctx = canvas.getContext("2d");
 	if (!ctx || nodes.length === 0) return;
 
 	const dpr = window.devicePixelRatio || 1;
 	const w = canvas.width / dpr;
-	const h = canvas.height / dpr;
 	const dashboardRoot = canvas.closest(".dashboard");
 	const computedStyles = getComputedStyle(
 		(dashboardRoot as HTMLElement | null) ?? document.documentElement,
 	);
-	const accent = computedStyles.getPropertyValue("--db-accent").trim() || "#c4642a";
+	const accent =
+		computedStyles.getPropertyValue("--db-accent").trim() || "#c4642a";
 	const accentBorder =
 		computedStyles.getPropertyValue("--db-accent-border").trim() ||
 		"rgba(196, 100, 42, 0.3)";
@@ -42,7 +39,7 @@ function renderMiniTree(
 	for (const node of nodes) {
 		const parentKey = node.parentId ?? "root";
 		if (!childrenMap.has(parentKey)) childrenMap.set(parentKey, []);
-		childrenMap.get(parentKey)!.push(node._id);
+		childrenMap.get(parentKey)?.push(node._id);
 	}
 
 	// Assign positions via BFS
@@ -59,7 +56,11 @@ function renderMiniTree(
 	const rootStartX = (w - totalRootWidth) / 2 + siblingGap / 2;
 
 	for (let i = 0; i < roots.length; i++) {
-		queue.push({ id: roots[i], depth: 0, xCenter: rootStartX + i * siblingGap });
+		queue.push({
+			id: roots[i],
+			depth: 0,
+			xCenter: rootStartX + i * siblingGap,
+		});
 	}
 
 	let qi = 0;
@@ -161,8 +162,8 @@ export function TreePreviewPopover({
 	return (
 		<div
 			className="relative"
-			onMouseEnter={handleMouseEnter}
-			onMouseLeave={handleMouseLeave}
+			onPointerEnter={handleMouseEnter}
+			onPointerLeave={handleMouseLeave}
 		>
 			{children}
 			{showPreview && (
