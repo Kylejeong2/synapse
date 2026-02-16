@@ -11,13 +11,13 @@ export function CallToAction({ onSignIn }: CallToActionProps) {
 				<h2 className="text-4xl sm:text-5xl font-semibold tracking-tight mb-6">
 					Your best ideas happen between the branches
 				</h2>
-				<p className="text-xl text-[#6b6560] mb-12">
+				<p className="text-xl text-[var(--landing-text-secondary)] mb-12">
 					Start forking your AI conversations. Free to use, no credit card
 					required.
 				</p>
 				<button
 					type="button"
-					className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[#1a1715] text-[#faf8f3] rounded-md hover:bg-[#262220]"
+					className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)]"
 					onClick={onSignIn}
 				>
 					Get Started Free

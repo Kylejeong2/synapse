@@ -21,7 +21,7 @@ const MessageCard = memo(({ message }: { message: UIMessage }) => {
 			<div className="w-full py-4">
 				<div className="max-w-3xl mx-auto px-4">
 					<div className="flex justify-end">
-						<div className="max-w-[70%] rounded-3xl px-5 py-2.5 bg-[#2f2f2f] text-white">
+						<div className="max-w-[70%] rounded-3xl px-5 py-2.5 bg-secondary text-secondary-foreground">
 							{message.parts.map((part, idx) => {
 								if (part.type === "text") {
 									return (

@@ -31,7 +31,7 @@ export function CodeBlock({
 	if (inline) {
 		return (
 			<code
-				className="bg-[#f4f4f4] dark:bg-[#3f3f3f] px-1.5 py-0.5 rounded text-sm font-mono text-[#c5432d] dark:text-[#f69d50]"
+				className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-destructive"
 				{...props}
 			>
 				{children}
@@ -41,7 +41,7 @@ export function CodeBlock({
 
 	return (
 		<div className="relative group my-4 text-sm">
-			<div className="flex items-center justify-between bg-[#2f2f2f] text-gray-300 px-4 py-2 rounded-t-md">
+			<div className="flex items-center justify-between bg-secondary text-secondary-foreground px-4 py-2 rounded-t-md">
 				<span className="text-xs font-sans">{language || "plaintext"}</span>
 				<button
 					type="button"

@@ -40,14 +40,14 @@ export function InputBar({
 
 	return (
 		<form onSubmit={handleSubmit} className="relative">
-			<div className="relative flex items-end bg-white dark:bg-[#2f2f2f] rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
+			<div className="relative flex items-end bg-background rounded-3xl shadow-sm border border-border">
 				<textarea
 					ref={textareaRef}
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={handleKeyDown}
 					placeholder={placeholder}
-					className="flex-1 bg-transparent resize-none outline-none px-4 py-3 text-[15px] max-h-[200px] placeholder:text-gray-500 dark:placeholder:text-gray-400"
+					className="flex-1 bg-transparent resize-none outline-none px-4 py-3 text-[15px] max-h-[200px] placeholder:text-muted-foreground"
 					rows={1}
 				/>
 				<button
@@ -55,8 +55,8 @@ export function InputBar({
 					disabled={!input.trim() || isLoading}
 					className={`m-2 p-2 rounded-lg transition-colors ${
 						input.trim() && !isLoading
-							? "bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
-							: "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+							? "bg-primary text-primary-foreground hover:bg-primary/90"
+							: "bg-muted text-muted-foreground cursor-not-allowed"
 					}`}
 				>
 					<ArrowUp className="h-4 w-4" />

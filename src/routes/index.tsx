@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -119,15 +120,18 @@ function ConversationsPage() {
 							Create branching conversations and explore ideas with AI
 						</p>
 					</div>
-					<Button
-						onClick={handleNewConversation}
-						disabled={isCreating}
-						size="lg"
-						className="gap-2 shadow-lg"
-					>
-						<Plus className="h-5 w-5" />
-						{isCreating ? "Creating..." : "New Conversation"}
-					</Button>
+					<div className="flex items-center gap-3">
+						<ThemeToggle />
+						<Button
+							onClick={handleNewConversation}
+							disabled={isCreating}
+							size="lg"
+							className="gap-2 shadow-lg"
+						>
+							<Plus className="h-5 w-5" />
+							{isCreating ? "Creating..." : "New Conversation"}
+						</Button>
+					</div>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

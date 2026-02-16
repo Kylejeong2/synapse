@@ -19,7 +19,7 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
 		<div
 			role="dialog"
 			aria-modal="true"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1715]/60 backdrop-blur-sm"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--landing-dark-bg)]/60 backdrop-blur-sm"
 			onClick={(e) => {
 				if (e.target === e.currentTarget) onClose();
 			}}
@@ -27,12 +27,12 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
 				if (e.key === "Escape") onClose();
 			}}
 		>
-			<Card className="w-full max-w-md mx-4 border border-[#e8e3d9] shadow-2xl bg-[#faf8f3] text-[#1a1715]">
+			<Card className="w-full max-w-md mx-4 border border-[var(--landing-border)] shadow-2xl bg-[var(--landing-bg)] text-[var(--landing-text)]">
 				<CardHeader className="text-center space-y-2 pb-4">
 					<CardTitle className="text-3xl font-semibold">
 						Welcome to Synapse
 					</CardTitle>
-					<CardDescription className="text-lg text-[#6b6560]">
+					<CardDescription className="text-lg text-[var(--landing-text-secondary)]">
 						Sign in to start forking conversations
 					</CardDescription>
 				</CardHeader>
