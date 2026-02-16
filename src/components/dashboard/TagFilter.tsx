@@ -27,7 +27,7 @@ export function TagFilter({
 						onClick={() => onTagToggle(tag)}
 						className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
 							isSelected
-								? "bg-[var(--db-accent)] text-white"
+								? "bg-[var(--db-accent)] text-[var(--db-text-on-dark)]"
 								: "bg-[var(--db-subtle)] border border-[var(--db-border)] text-[var(--db-text-secondary)] hover:border-[var(--db-accent-border)]"
 						}`}
 					>

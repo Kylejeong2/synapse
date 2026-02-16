@@ -139,13 +139,13 @@ export function TagsSection({
 					{selectedTags.map((tag) => (
 						<span
 							key={tag}
-							className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--db-accent)] text-white text-xs font-medium"
+							className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--db-accent)] text-[var(--db-text-on-dark)] text-xs font-medium"
 						>
 							{tag}
 							<button
 								type="button"
 								onClick={() => handleTagToggle(tag)}
-								className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
+								className="hover:bg-[var(--db-on-dark-overlay)] rounded-full p-0.5 transition-colors"
 							>
 								<span className="sr-only">Remove</span>
 								<svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">

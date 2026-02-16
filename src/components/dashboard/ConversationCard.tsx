@@ -71,7 +71,7 @@ function DeleteDialog({ onDelete }: { onDelete: (e: React.MouseEvent) => void })
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={onDelete}
-						className="bg-destructive text-white hover:bg-destructive/90"
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					>
 						Delete
 					</AlertDialogAction>
@@ -116,7 +116,7 @@ function SelectCheckbox({
 			}}
 			className={`h-5 w-5 rounded border flex items-center justify-center transition-all shrink-0 ${
 				isSelected
-					? "bg-[var(--db-accent)] border-[var(--db-accent)] text-white"
+					? "bg-[var(--db-accent)] border-[var(--db-accent)] text-[var(--db-text-on-dark)]"
 					: showCheckbox
 						? "border-[var(--db-muted-border)] hover:border-[var(--db-accent)]"
 						: "border-[var(--db-muted-border)] opacity-0 group-hover:opacity-100 hover:border-[var(--db-accent)]"

@@ -24,6 +24,14 @@ function renderMiniTree(
 	const dpr = window.devicePixelRatio || 1;
 	const w = canvas.width / dpr;
 	const h = canvas.height / dpr;
+	const dashboardRoot = canvas.closest(".dashboard");
+	const computedStyles = getComputedStyle(
+		(dashboardRoot as HTMLElement | null) ?? document.documentElement,
+	);
+	const accent = computedStyles.getPropertyValue("--db-accent").trim() || "#c4642a";
+	const accentBorder =
+		computedStyles.getPropertyValue("--db-accent-border").trim() ||
+		"rgba(196, 100, 42, 0.3)";
 
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	ctx.scale(dpr, dpr);
@@ -74,7 +82,7 @@ function renderMiniTree(
 	}
 
 	// Draw edges
-	ctx.strokeStyle = "rgba(196, 100, 42, 0.3)";
+	ctx.strokeStyle = accentBorder;
 	ctx.lineWidth = 1;
 	for (const node of nodes) {
 		if (!node.parentId) continue;
@@ -94,7 +102,7 @@ function renderMiniTree(
 		if (!pos) continue;
 		ctx.beginPath();
 		ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
-		ctx.fillStyle = node.depth === 0 ? "#c4642a" : "rgba(196, 100, 42, 0.6)";
+		ctx.fillStyle = node.depth === 0 ? accent : accentBorder;
 		ctx.fill();
 	}
 

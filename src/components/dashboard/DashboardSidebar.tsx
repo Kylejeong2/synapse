@@ -5,6 +5,7 @@ import {
 	Plus,
 	Tag,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export type DashboardSection = "overview" | "conversations" | "pinned" | "tags";
 
@@ -90,7 +91,7 @@ export function DashboardSidebar({
 								<span
 									className={`text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
 										isActive
-											? "bg-white/15 text-[var(--db-text-on-dark)]"
+											? "bg-[var(--db-on-dark-overlay)] text-[var(--db-text-on-dark)]"
 											: "bg-[var(--db-border)] text-[var(--db-text-tertiary)]"
 									}`}
 								>
@@ -108,11 +109,15 @@ export function DashboardSidebar({
 					type="button"
 					onClick={onNewConversation}
 					disabled={isCreating}
-					className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--db-accent)] text-white text-sm font-medium hover:bg-[var(--db-accent-hover)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+					className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--db-accent)] text-[var(--db-text-on-dark)] text-sm font-medium hover:bg-[var(--db-accent-hover)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
 				>
 					<Plus className="h-4 w-4" />
 					{isCreating ? "Creating..." : "New Conversation"}
 				</button>
+				<div className="flex items-center justify-between px-1 pt-1">
+					<span className="text-xs text-[var(--db-text-tertiary)]">Theme</span>
+					<ThemeToggle />
+				</div>
 			</div>
 		</aside>
 	);

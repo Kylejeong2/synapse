@@ -23,12 +23,12 @@ export function BulkActionToolbar({
 				{selectedCount} selected
 			</span>
 
-			<div className="h-4 w-px bg-white/20" />
+			<div className="h-4 w-px bg-[var(--db-on-dark-divider)]" />
 
 			<button
 				type="button"
 				onClick={selectedCount === totalCount ? onClearSelection : onSelectAll}
-				className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--db-text-muted-dark)] hover:text-[var(--db-text-on-dark)] hover:bg-white/10 transition-all"
+				className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--db-text-muted-dark)] hover:text-[var(--db-text-on-dark)] hover:bg-[var(--db-on-dark-overlay)] transition-all"
 			>
 				{selectedCount === totalCount ? (
 					<>
@@ -55,7 +55,7 @@ export function BulkActionToolbar({
 			<button
 				type="button"
 				onClick={onClearSelection}
-				className="flex items-center justify-center h-7 w-7 rounded-md text-[var(--db-text-muted-dark)] hover:text-[var(--db-text-on-dark)] hover:bg-white/10 transition-all"
+				className="flex items-center justify-center h-7 w-7 rounded-md text-[var(--db-text-muted-dark)] hover:text-[var(--db-text-on-dark)] hover:bg-[var(--db-on-dark-overlay)] transition-all"
 			>
 				<X className="h-4 w-4" />
 			</button>
