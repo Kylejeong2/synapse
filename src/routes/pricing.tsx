@@ -33,11 +33,11 @@ function PricingPage() {
 	const [spendCapInput, setSpendCapInput] = useState("");
 	const usageStats = useQuery(
 		api.rateLimiting.getUsageStats,
-		user?.id ? { userId: user.id } : "skip",
+		user?.id ? {} : "skip",
 	);
 	const billingSettings = useQuery(
 		api.subscriptions.getBillingSettings,
-		user?.id ? { userId: user.id } : "skip",
+		user?.id ? {} : "skip",
 	);
 
 	const loadBillingToken = async () => {

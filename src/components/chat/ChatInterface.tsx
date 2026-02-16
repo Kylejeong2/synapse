@@ -41,7 +41,7 @@ export function ChatInterface({
 	const updateDefaultModel = useUpdateDefaultModel();
 	const usageStats = useQuery(
 		api.rateLimiting.getUsageStats,
-		user?.id ? { userId: user.id } : "skip",
+		user?.id ? {} : "skip",
 	);
 
 	// Model state - initialize from conversation's defaultModel or fallback to default

@@ -39,7 +39,6 @@ export function AppSidebar() {
 		setIsCreating(true);
 		try {
 			const conversationId = await createConversation({
-				userId: user.id,
 				title: "New Conversation",
 			});
 			navigate({

@@ -49,13 +49,16 @@ describe('usage.recordUsage pricing behavior', () => {
 			.mockImplementationOnce(() => makeQuery(subscription))
 			.mockImplementationOnce(() => makeQuery(null));
 
-		const db = { query, insert, patch };
+		const get = vi
+			.fn()
+			.mockResolvedValueOnce({ _id: 'conv_1', userId: 'user_1' })
+			.mockResolvedValueOnce({ _id: 'node_1', conversationId: 'conv_1' });
+		const db = { query, insert, patch, get };
 		const { recordUsage } = await import('../convex/usage');
 
 		await (recordUsage as any).handler(
-			{ db },
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_1' })) } },
 			{
-				userId: 'user_1',
 				conversationId: 'conv_1',
 				nodeId: 'node_1',
 				model: 'gpt-5.2-2025-12-11',
@@ -86,13 +89,19 @@ describe('usage.recordUsage pricing behavior', () => {
 			.mockImplementationOnce(() => makeQuery(null))
 			.mockImplementationOnce(() => makeQuery(null))
 			.mockImplementationOnce(() => makeQuery(null));
-		const db = { query, insert, patch };
+		const get = vi
+			.fn()
+			.mockResolvedValueOnce({ _id: 'conv_1', userId: 'user_free' })
+			.mockResolvedValueOnce({ _id: 'node_1', conversationId: 'conv_1' });
+		const db = { query, insert, patch, get };
 
 		const { recordUsage } = await import('../convex/usage');
 		await (recordUsage as any).handler(
-			{ db },
 			{
-				userId: 'user_free',
+				db,
+				auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_free' })) },
+			},
+			{
 				conversationId: 'conv_1',
 				nodeId: 'node_1',
 				model: 'unknown',

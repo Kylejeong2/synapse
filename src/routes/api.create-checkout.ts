@@ -7,7 +7,15 @@ const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
 if (!CONVEX_URL) {
 	throw new Error("VITE_CONVEX_URL environment variable is not set");
 }
-const convexClient = new ConvexHttpClient(CONVEX_URL);
+
+function getBearerToken(request: Request): string | null {
+	const authHeader = request.headers.get("authorization");
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return null;
+	}
+	const token = authHeader.slice("Bearer ".length).trim();
+	return token || null;
+}
 
 export const Route = createFileRoute("/api/create-checkout")({
 	server: {
@@ -16,7 +24,15 @@ export const Route = createFileRoute("/api/create-checkout")({
 				try {
 					const auth = await requireClerkUserId(request);
 					if ("response" in auth) return auth.response;
-					const { userId } = auth;
+					const token = getBearerToken(request);
+					if (!token) {
+						return new Response(JSON.stringify({ error: "Unauthorized" }), {
+							status: 401,
+							headers: { "Content-Type": "application/json" },
+						});
+					}
+					const convexClient = new ConvexHttpClient(CONVEX_URL);
+					convexClient.setAuth(token);
 
 					const body = await request.json();
 					const { userEmail } = body;
@@ -24,7 +40,6 @@ export const Route = createFileRoute("/api/create-checkout")({
 					const result = await convexClient.mutation(
 						api.subscriptions.createCheckoutSession,
 						{
-							userId,
 							userEmail,
 						},
 					);

@@ -50,3 +50,27 @@ export const calculateTokenCost = query({
 	},
 });
 
+export const hasActiveModelPricing = query({
+	args: {
+		model: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const pricing = await ctx.db
+			.query("token_pricing")
+			.withIndex("model", (q) => q.eq("model", args.model))
+			.filter((q) => q.eq(q.field("isActive"), true))
+			.first();
+		return Boolean(pricing);
+	},
+});
+
+export const listActivePricedModels = query({
+	args: {},
+	handler: async (ctx) => {
+		const rows = await ctx.db
+			.query("token_pricing")
+			.withIndex("isActive", (q) => q.eq("isActive", true))
+			.collect();
+		return rows.map((row) => row.model);
+	},
+});

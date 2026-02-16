@@ -103,4 +103,23 @@ describe('POST /api/stripe-webhook/replay', () => {
 			duplicate: false,
 		});
 	});
+
+	it('returns 403 when replay IP allowlist is configured and request IP is not allowed', async () => {
+		process.env.STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS = '1.2.3.4';
+		const post = await getReplayHandler();
+		const response = await post({
+			request: new Request('http://localhost/api/stripe-webhook/replay', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-webhook-replay-token': 'replay_secret',
+					'x-forwarded-for': '5.6.7.8',
+				},
+				body: JSON.stringify({ eventId: 'evt_2' }),
+			}),
+		});
+
+		expect(response.status).toBe(403);
+		delete process.env.STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS;
+	});
 });

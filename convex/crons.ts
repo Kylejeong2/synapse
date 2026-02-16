@@ -10,6 +10,12 @@ crons.interval(
 );
 
 crons.interval(
+	'reconcile pending overage billing',
+	{ minutes: 30 },
+	internal.billing.reconcilePendingOverageBilling,
+);
+
+crons.interval(
 	'retry failed stripe webhooks',
 	{ minutes: 10 },
 	internal.stripeWebhooks.retryFailedWebhookEvents,

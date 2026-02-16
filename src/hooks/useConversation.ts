@@ -8,10 +8,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 
 /** Fetches all conversations for a user, sorted by last accessed. Skips query if userId is null/undefined. */
 export function useConversations(userId: string | null | undefined) {
-	return useQuery(
-		api.conversations.getUserConversations,
-		userId ? { userId } : "skip",
-	);
+	return useQuery(api.conversations.getUserConversations, userId ? {} : "skip");
 }
 
 /** Fetches a single conversation by ID. Skips query if conversationId is null. */

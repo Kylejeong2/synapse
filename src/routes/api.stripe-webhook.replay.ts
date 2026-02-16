@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
 import Stripe from "stripe";
@@ -27,6 +28,34 @@ function createStripeClient(): Stripe {
 	});
 }
 
+function tokenMatches(actual: string | null, expected: string): boolean {
+	if (!actual) return false;
+	const actualBuffer = Buffer.from(actual);
+	const expectedBuffer = Buffer.from(expected);
+	if (actualBuffer.length !== expectedBuffer.length) return false;
+	return timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function getForwardedIp(request: Request): string | null {
+	const forwarded = request.headers.get("x-forwarded-for");
+	if (!forwarded) return null;
+	const first = forwarded.split(",")[0]?.trim();
+	return first || null;
+}
+
+function isReplayIpAllowed(request: Request): boolean {
+	const configured = process.env.STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS;
+	if (!configured) return true;
+	const allowedIps = configured
+		.split(",")
+		.map((value) => value.trim())
+		.filter(Boolean);
+	if (allowedIps.length === 0) return true;
+	const sourceIp = getForwardedIp(request);
+	if (!sourceIp) return false;
+	return allowedIps.includes(sourceIp);
+}
+
 export const Route = createFileRoute("/api/stripe-webhook/replay")({
 	server: {
 		handlers: {
@@ -34,9 +63,15 @@ export const Route = createFileRoute("/api/stripe-webhook/replay")({
 				try {
 					const token = request.headers.get("x-webhook-replay-token");
 					const expected = getRequiredEnv("STRIPE_WEBHOOK_REPLAY_TOKEN");
-					if (!token || token !== expected) {
+					if (!tokenMatches(token, expected)) {
 						return new Response(JSON.stringify({ error: "Unauthorized" }), {
 							status: 401,
+							headers: { "Content-Type": "application/json" },
+						});
+					}
+					if (!isReplayIpAllowed(request)) {
+						return new Response(JSON.stringify({ error: "Forbidden" }), {
+							status: 403,
 							headers: { "Content-Type": "application/json" },
 						});
 					}

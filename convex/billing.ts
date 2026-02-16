@@ -113,6 +113,73 @@ export const processOverageBilling = internalAction({
 	},
 });
 
+/**
+ * Reconcile pending cycles that may be left behind after partial failures.
+ *
+ * For each pending cycle:
+ * - if an invoice with metadata.billingCycleId exists in Stripe, mark cycle completed.
+ * - otherwise reset to active so normal overage processing can retry safely.
+ */
+export const reconcilePendingOverageBilling = internalAction({
+	handler: async (
+		ctx,
+	): Promise<{ scanned: number; completed: number; resetToActive: number; errors: number }> => {
+		const pendingCycles: Array<{
+			_id: Id<'billing_cycles'>;
+			stripeCustomerId: string;
+		}> = await ctx.runQuery(internal.usage.getPendingCycles);
+
+		let completed = 0;
+		let resetToActive = 0;
+		let errors = 0;
+
+		for (const cycle of pendingCycles) {
+			try {
+				const invoices = await stripe.invoices.list({
+					customer: cycle.stripeCustomerId,
+					limit: 25,
+				});
+
+				const matchedInvoice = invoices.data.find(
+					(invoice) => invoice.metadata?.billingCycleId === cycle._id,
+				);
+
+				if (matchedInvoice) {
+					await ctx.runMutation(internal.usage.completeBillingCycle, {
+						billingCycleId: cycle._id,
+						stripeInvoiceId: matchedInvoice.id,
+					});
+					completed++;
+				} else {
+					await ctx.runMutation(internal.usage.setBillingCycleStatus, {
+						billingCycleId: cycle._id,
+						status: 'active',
+					});
+					resetToActive++;
+				}
+			} catch (error) {
+				errors++;
+				await ctx.runMutation(internal.billing.logBillingAlert, {
+					source: 'overage_cron',
+					severity: 'error',
+					message: `Failed pending-cycle reconciliation for ${cycle._id}`,
+					context: JSON.stringify({
+						billingCycleId: cycle._id,
+						error: error instanceof Error ? error.message : String(error),
+					}),
+				});
+			}
+		}
+
+		return {
+			scanned: pendingCycles.length,
+			completed,
+			resetToActive,
+			errors,
+		};
+	},
+});
+
 export const logBillingAlert = internalMutation({
 	args: {
 		source: v.union(

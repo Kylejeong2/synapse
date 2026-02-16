@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD, PRO_MONTHLY_PRICE_USD } from './pricing';
 import { stripe, getStripePriceId } from './stripe';
 import { isOpenBillingSubscriptionStatus } from './subscriptionStatus';
+import { requireAuthenticatedUserId } from './auth';
 
 let validatedPriceId: string | null = null;
 
@@ -128,13 +129,13 @@ async function findOrCreateStripeCustomer(
  */
 export const createCheckoutSession = mutation({
 	args: {
-		userId: v.string(),
 		userEmail: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const existingSubscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (
@@ -145,7 +146,7 @@ export const createCheckoutSession = mutation({
 		}
 
 		const customerId = await findOrCreateStripeCustomer(ctx, {
-			userId: args.userId,
+			userId,
 			userEmail: args.userEmail,
 		});
 		await assertStripeSubscriptionPriceMatchesCatalog();
@@ -157,7 +158,7 @@ export const createCheckoutSession = mutation({
 			success_url: `${getServerUrl()}/pricing?success=true`,
 			cancel_url: `${getServerUrl()}/pricing?canceled=true`,
 			metadata: {
-				clerkUserId: args.userId,
+				clerkUserId: userId,
 			},
 		});
 
@@ -172,13 +173,12 @@ export const createCheckoutSession = mutation({
  * Create a Stripe Billing Portal session for self-serve billing management.
  */
 export const createBillingPortalSession = mutation({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const mappedCustomer = await ctx.db
 			.query('billing_customers')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (!mappedCustomer?.stripeCustomerId) {
@@ -198,13 +198,12 @@ export const createBillingPortalSession = mutation({
  * Set subscription cancellation at period end.
  */
 export const cancelSubscriptionAtPeriodEnd = mutation({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (!subscription) {
@@ -227,13 +226,12 @@ export const cancelSubscriptionAtPeriodEnd = mutation({
  * Resume a subscription previously set to cancel at period end.
  */
 export const resumeSubscription = mutation({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (!subscription) {
@@ -258,13 +256,13 @@ export const resumeSubscription = mutation({
  */
 export const setMonthlySpendCap = mutation({
 	args: {
-		userId: v.string(),
 		monthlySpendCap: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (!subscription) {
@@ -287,13 +285,12 @@ export const setMonthlySpendCap = mutation({
  * Billing settings for in-product controls.
  */
 export const getBillingSettings = query({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 
 		if (!subscription) {

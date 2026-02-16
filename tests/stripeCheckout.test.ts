@@ -63,11 +63,16 @@ vi.mock('../convex/stripe', async () => {
 function createCtx({
 	existingSubscription = null,
 	mappedCustomer = null,
+	userId = 'user_1',
 }: {
 	existingSubscription?: unknown;
 	mappedCustomer?: unknown;
+	userId?: string;
 }) {
 	return {
+		auth: {
+			getUserIdentity: vi.fn(async () => ({ subject: userId })),
+		},
 		db: {
 			query: vi.fn((table: string) => {
 				if (table === 'subscriptions') {
@@ -119,7 +124,6 @@ describe('Stripe checkout session', () => {
 		const ctx = createCtx({ existingSubscription: null, mappedCustomer: null });
 
 		const result = await (createCheckoutSession as any)._handler(ctx as any, {
-			userId: 'user_1',
 			userEmail: 'user@example.com',
 		});
 
@@ -153,7 +157,6 @@ describe('Stripe checkout session', () => {
 		});
 
 		await (createCheckoutSession as any)._handler(ctx as any, {
-			userId: 'user_2',
 			userEmail: 'mapped@example.com',
 		});
 
@@ -173,7 +176,6 @@ describe('Stripe checkout session', () => {
 		const ctx = createCtx({ existingSubscription: null, mappedCustomer: null });
 
 		await (createCheckoutSession as any)._handler(ctx as any, {
-			userId: 'user_custom_url',
 			userEmail: 'custom@example.com',
 		});
 
@@ -194,7 +196,6 @@ describe('Stripe checkout session', () => {
 
 		await expect(
 			(createCheckoutSession as any)._handler(ctx as any, {
-				userId: 'user_4',
 				userEmail: 'user4@example.com',
 			}),
 		).rejects.toThrow('Stripe unavailable');
@@ -209,7 +210,6 @@ describe('Stripe checkout session', () => {
 
 		await expect(
 			(createCheckoutSession as any)._handler(ctx as any, {
-				userId: 'user_3',
 				userEmail: 'blocked@example.com',
 			}),
 		).rejects.toThrow('User already has an existing subscription');
@@ -227,7 +227,6 @@ describe('Stripe checkout session', () => {
 
 		await expect(
 			(createCheckoutSession as any)._handler(ctx as any, {
-				userId: 'user_mismatch',
 				userEmail: 'mismatch@example.com',
 			}),
 		).rejects.toThrow('Stripe price mismatch');

@@ -7,20 +7,20 @@ import {
 	PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD,
 } from './pricing';
 import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus';
+import { requireAuthenticatedUserId } from './auth';
 
 /**
  * Check if user can make a request (rate limiting)
  * Returns true if user can proceed, false if rate limited
  */
 export const checkRateLimit = query({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		// Check if user has active subscription
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 		const hasBillingEntitlement = Boolean(
 			subscription && isBillingEntitledSubscriptionStatus(subscription.status),
@@ -42,12 +42,12 @@ export const checkRateLimit = query({
  */
 export const checkTokenLimit = query({
 	args: {
-		userId: v.string(),
 		requestedTokens: v.optional(v.number()), // Estimated tokens for this request
 		model: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const { userId, requestedTokens = 0, model } = args;
+		const userId = await requireAuthenticatedUserId(ctx);
+		const { requestedTokens = 0, model } = args;
 
 		// Check if user has active subscription
 		const subscription = await ctx.db
@@ -152,14 +152,13 @@ export const checkTokenLimit = query({
  * Get usage statistics for a user
  */
 export const getUsageStats = query({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		// Check if user has active subscription
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 		const entitledSubscription =
 			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
@@ -170,7 +169,7 @@ export const getUsageStats = query({
 			// Paid tier stats
 			const currentCycle = await ctx.db
 				.query('billing_cycles')
-				.withIndex('userId', (q) => q.eq('userId', args.userId))
+				.withIndex('userId', (q) => q.eq('userId', userId))
 				.filter((q) => q.eq(q.field('status'), 'active'))
 				.first();
 
@@ -216,12 +215,12 @@ export const getUsageStats = query({
 		// Free tier stats
 		const freeTierUsage = await ctx.db
 			.query('free_tier_usage')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.collect();
 
 		const conversations = await ctx.db
 			.query('conversations')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.filter((q) => q.eq(q.field('isFreeTier'), true))
 			.collect();
 
@@ -244,13 +243,12 @@ export const getUsageStats = query({
  * Check if user is on free tier
  */
 export const isFreeTier = query({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 		return !(
 			subscription && isBillingEntitledSubscriptionStatus(subscription.status)

@@ -6,6 +6,7 @@ const verifyTokenMock = vi.fn();
 vi.mock('convex/browser', () => ({
 	ConvexHttpClient: vi.fn(function ConvexHttpClientMock() {
 		return {
+			setAuth: vi.fn(),
 			mutation: mutationMock,
 		};
 	}),
@@ -78,7 +79,7 @@ describe('Billing management API routes', () => {
 		expect(response.status).toBe(200);
 		expect(mutationMock).toHaveBeenCalledWith(
 			'subscriptions:setMonthlySpendCap',
-			{ userId: 'user_abc', monthlySpendCap: 75 },
+			{ monthlySpendCap: 75 },
 		);
 	});
 });

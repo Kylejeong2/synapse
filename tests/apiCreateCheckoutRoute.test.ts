@@ -6,6 +6,7 @@ const verifyTokenMock = vi.fn();
 vi.mock("convex/browser", () => ({
 	ConvexHttpClient: vi.fn(function ConvexHttpClientMock() {
 		return {
+			setAuth: vi.fn(),
 			mutation: mutationMock,
 		};
 	}),
@@ -120,7 +121,6 @@ describe("POST /api/create-checkout", () => {
 		expect(mutationMock).toHaveBeenCalledWith(
 			"subscriptions:createCheckoutSession",
 			{
-				userId: "user_123",
 				userEmail: "user@example.com",
 			},
 		);

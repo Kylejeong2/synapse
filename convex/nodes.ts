@@ -4,6 +4,35 @@ import type { Doc, Id } from './_generated/dataModel'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
 import { FREE_TIER_MAX_TOKENS } from './pricing'
 import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus'
+import { requireAuthenticatedUserId } from './auth'
+
+async function assertConversationOwner(
+	ctx: any,
+	conversationId: Id<'conversations'>,
+	userId: string,
+) {
+	const conversation = await ctx.db.get(conversationId)
+	if (!conversation) {
+		throw new Error('Conversation not found')
+	}
+	if (conversation.userId !== userId) {
+		throw new Error('Forbidden')
+	}
+	return conversation
+}
+
+async function assertNodeOwner(
+	ctx: any,
+	nodeId: Id<'nodes'>,
+	userId: string,
+) {
+	const node = await ctx.db.get(nodeId)
+	if (!node) {
+		throw new Error('Node not found')
+	}
+	await assertConversationOwner(ctx, node.conversationId, userId)
+	return node
+}
 
 // Create a new node
 export const create = mutation({
@@ -26,11 +55,13 @@ export const create = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       // Get conversation to check free tier status
-      const conversation = await ctx.db.get(args.conversationId)
-      if (!conversation) {
-        throw new Error('Conversation not found')
-      }
+      const conversation = await assertConversationOwner(
+        ctx,
+        args.conversationId,
+        userId,
+      )
 
       // Check if user is free tier
       const subscription = await ctx.db
@@ -126,6 +157,10 @@ export const getAncestors = query({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
+      if (args.nodeId) {
+        await assertNodeOwner(ctx, args.nodeId, userId)
+      }
       const result = await getAncestorsInternal(ctx, args.nodeId)
       
       logConvexOperation({
@@ -174,6 +209,8 @@ export const getChildren = query({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
+      await assertNodeOwner(ctx, args.parentId, userId)
       const children = await ctx.db
         .query('nodes')
         .withIndex('parentId', (q) => q.eq('parentId', args.parentId))
@@ -225,7 +262,8 @@ export const getNode = query({
     const timer = new ConvexTimer()
     
     try {
-      const node = await ctx.db.get(args.nodeId)
+      const userId = await requireAuthenticatedUserId(ctx)
+      const node = await assertNodeOwner(ctx, args.nodeId, userId)
       
       logConvexOperation({
         operation_id: operationId,
@@ -276,7 +314,9 @@ export const updatePosition = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { nodeId, position } = args
+      await assertNodeOwner(ctx, nodeId, userId)
       await ctx.db.patch(nodeId, { position })
       
       logConvexOperation({
@@ -327,7 +367,9 @@ export const updateContent = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { nodeId, assistantResponse, tokensUsed, model, toolCalls, toolResults } = args
+      await assertNodeOwner(ctx, nodeId, userId)
       await ctx.db.patch(nodeId, {
         assistantResponse,
         tokensUsed,
@@ -379,6 +421,8 @@ export const getContextChain = query({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
+      await assertNodeOwner(ctx, args.nodeId, userId)
       const ancestors = await getAncestorsInternal(ctx, args.nodeId)
 
       let cumulativeTokens = 0

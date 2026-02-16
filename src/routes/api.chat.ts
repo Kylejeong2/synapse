@@ -31,7 +31,15 @@ const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
 if (!CONVEX_URL) {
 	throw new Error("VITE_CONVEX_URL environment variable is not set");
 }
-const convexClient = new ConvexHttpClient(CONVEX_URL);
+
+function getBearerToken(request: Request): string | null {
+	const authHeader = request.headers.get("authorization");
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return null;
+	}
+	const token = authHeader.slice("Bearer ".length).trim();
+	return token || null;
+}
 
 /**
  * Get the appropriate model instance based on provider and model ID
@@ -83,6 +91,15 @@ export const Route = createFileRoute("/api/chat")({
 					if ("response" in auth) {
 						return auth.response;
 					}
+					const token = getBearerToken(request);
+					if (!token) {
+						return new Response(JSON.stringify({ error: "Unauthorized" }), {
+							status: 401,
+							headers: { "Content-Type": "application/json" },
+						});
+					}
+					const convexClient = new ConvexHttpClient(CONVEX_URL);
+					convexClient.setAuth(token);
 					logContext.user_id = auth.userId;
 
 					const body = await request.json();
@@ -100,6 +117,23 @@ export const Route = createFileRoute("/api/chat")({
 							: DEFAULT_MODEL;
 
 					const modelConfig = MODELS[modelId];
+					const hasPricingForModel = await convexClient.query(
+						api.tokenPricing.hasActiveModelPricing,
+						{ model: modelId },
+					);
+					if (!hasPricingForModel) {
+						return new Response(
+							JSON.stringify({
+								error: "Model temporarily unavailable",
+								message:
+									"This model is not billable right now because active pricing is not configured.",
+							}),
+							{
+								status: 503,
+								headers: { "Content-Type": "application/json" },
+							},
+						);
+					}
 
 					// Add model info to log context
 					logContext.model = modelId;
@@ -140,12 +174,10 @@ export const Route = createFileRoute("/api/chat")({
 						});
 					}
 
-					const userId = conversation.userId;
-
 					// Check free tier token limits before processing
 					const isFreeTier = await convexClient.query(
 						api.rateLimiting.isFreeTier,
-						{ userId },
+						{},
 					);
 
 					if (isFreeTier) {
@@ -175,7 +207,7 @@ export const Route = createFileRoute("/api/chat")({
 					// Check rate limits and token credit
 					const rateLimitCheck = await convexClient.query(
 						api.rateLimiting.checkRateLimit,
-						{ userId },
+						{},
 					);
 
 					if (!rateLimitCheck.allowed) {
@@ -195,7 +227,7 @@ export const Route = createFileRoute("/api/chat")({
 					const estimatedTokens = Math.ceil(prompt.length / 4) + 1000; // Add buffer for response
 					const tokenLimitCheck = await convexClient.query(
 						api.rateLimiting.checkTokenLimit,
-						{ userId, requestedTokens: estimatedTokens, model: modelId },
+						{ requestedTokens: estimatedTokens, model: modelId },
 					);
 
 					if (!tokenLimitCheck.allowed) {
@@ -276,16 +308,34 @@ export const Route = createFileRoute("/api/chat")({
 					logContext.is_fork = Boolean(nodeId);
 					logContext.is_root = !nodeId;
 
-					// 4. Stream from the model (throttled updates to Convex for near-realtime UI)
-					let newNodeId: Id<"nodes">;
+					// 4. Create node before streaming so metering writes have a stable target id.
+					const newNodeId = await convexClient
+						.mutation(api.nodes.create, {
+							conversationId: conversationId as Id<"conversations">,
+							parentId: nodeId ? (nodeId as Id<"nodes">) : undefined,
+							userPrompt: prompt,
+							assistantResponse: "",
+							model: modelId,
+							tokensUsed: 0,
+							depth,
+							position,
+						})
+						.then(async (id) => {
+							// Set root if this is the first node
+							if (!nodeId) {
+								await convexClient.mutation(api.conversations.updateRootNode, {
+									conversationId: conversationId as Id<"conversations">,
+									rootNodeId: id,
+								});
+							}
+							return id;
+						});
 
 					// Get the model instance based on provider
 					const modelInstance = getModelInstance(modelId);
-
 					timer.mark("model_request_start");
 
-					// Start model streaming and node creation in parallel
-					const modelPromise = streamText({
+					const result = streamText({
 						model: modelInstance,
 						system: SYSTEM_PROMPT,
 						messages,
@@ -329,7 +379,6 @@ export const Route = createFileRoute("/api/chat")({
 
 								// Record usage
 								await convexClient.mutation(api.usage.recordUsage, {
-									userId,
 									conversationId: conversationId as Id<"conversations">,
 									nodeId: newNodeId as Id<"nodes">,
 									model: modelId,
@@ -372,36 +421,6 @@ export const Route = createFileRoute("/api/chat")({
 							}
 						},
 					});
-
-					// Create node and set root in parallel with model streaming
-					const nodePromise = convexClient
-						.mutation(api.nodes.create, {
-							conversationId: conversationId as Id<"conversations">,
-							parentId: nodeId ? (nodeId as Id<"nodes">) : undefined,
-							userPrompt: prompt,
-							assistantResponse: "",
-							model: modelId,
-							tokensUsed: 0,
-							depth,
-							position,
-						})
-						.then(async (id) => {
-							// Set root if this is the first node
-							if (!nodeId) {
-								await convexClient.mutation(api.conversations.updateRootNode, {
-									conversationId: conversationId as Id<"conversations">,
-									rootNodeId: id,
-								});
-							}
-							return id;
-						});
-
-					// Wait for both model and node creation
-					const [result, _newNodeId] = await Promise.all([
-						modelPromise,
-						nodePromise,
-					]);
-					newNodeId = _newNodeId;
 
 					timer.mark("model_ttfb");
 					logContext.model_ttfb_ms = timer.duration(

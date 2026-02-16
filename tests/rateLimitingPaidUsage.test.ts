@@ -48,8 +48,8 @@ describe('checkTokenLimit paid-tier overage behavior', () => {
 
 		const { checkTokenLimit } = await import('../convex/rateLimiting');
 		const result = await (checkTokenLimit as any).handler(
-			{ db },
-			{ userId: 'user_1', requestedTokens: 10_000 },
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_1' })) } },
+			{ requestedTokens: 10_000 },
 		);
 
 		expect(result.allowed).toBe(true);
@@ -78,8 +78,8 @@ describe('checkTokenLimit paid-tier overage behavior', () => {
 
 		const { checkTokenLimit } = await import('../convex/rateLimiting');
 		const result = await (checkTokenLimit as any).handler(
-			{ db },
-			{ userId: 'user_1', requestedTokens: 10_000 },
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_1' })) } },
+			{ requestedTokens: 10_000 },
 		);
 
 		expect(result.allowed).toBe(false);
@@ -107,8 +107,8 @@ describe('checkTokenLimit paid-tier overage behavior', () => {
 
 		const { checkTokenLimit } = await import('../convex/rateLimiting');
 		const result = await (checkTokenLimit as any).handler(
-			{ db },
-			{ userId: 'user_trial', requestedTokens: 1000 },
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_trial' })) } },
+			{ requestedTokens: 1000 },
 		);
 
 		expect(result.allowed).toBe(true);
@@ -143,9 +143,8 @@ describe('checkTokenLimit paid-tier overage behavior', () => {
 
 		const { checkTokenLimit } = await import('../convex/rateLimiting');
 		const result = await (checkTokenLimit as any).handler(
-			{ db },
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_1' })) } },
 			{
-				userId: 'user_1',
 				requestedTokens: 3000,
 				model: 'gpt-5.2-2025-12-11',
 			},

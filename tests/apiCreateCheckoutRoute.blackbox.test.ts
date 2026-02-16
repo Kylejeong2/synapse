@@ -93,7 +93,6 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 				format: "convex_encoded_json",
 				args: [
 					{
-						userId: "user_blackbox_verified",
 						userEmail: "blackbox@example.com",
 					},
 				],

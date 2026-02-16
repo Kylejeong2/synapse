@@ -134,6 +134,9 @@ VITE_APP_TITLE=Synapse                # Optional: Custom app title
 3. **Configure Redirect URLs** (for production):
    - In Clerk dashboard, go to "Paths"
    - Add your production URL to allowed redirect URLs
+4. **Create Clerk JWT template for Convex**:
+   - In Clerk dashboard, create a JWT template named `convex`
+   - Ensure its issuer domain is set in your server env as `CLERK_JWT_ISSUER_DOMAIN`
 
 ### 6. Run the Development Server
 
@@ -230,12 +233,14 @@ synapse/
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | OpenAI API key for AI model access |
 | `CLERK_SECRET_KEY` | Yes | Clerk secret key for server-side auth verification |
+| `CLERK_JWT_ISSUER_DOMAIN` | Yes (for Convex auth) | Clerk issuer domain used by `convex/auth.config.ts` |
 | `SERVER_URL` | No | Custom server URL (for production) |
 | `MODEL_NAME` | No | Override default model selection |
 | `STRIPE_SECRET_KEY` | Yes (for billing) | Stripe secret key used for checkout, invoices, and webhooks |
 | `STRIPE_PRICE_ID_SUBSCRIPTION` | Yes (for billing) | Stripe recurring price ID for the Pro subscription |
 | `STRIPE_WEBHOOK_SECRET` | Yes (for billing) | Stripe webhook signing secret for `/api/stripe-webhook` verification |
 | `STRIPE_WEBHOOK_REPLAY_TOKEN` | Yes (for billing ops) | Shared secret for manual webhook replay endpoint `/api/stripe-webhook/replay` |
+| `STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS` | No (recommended for billing ops) | Comma-separated IP allowlist for `/api/stripe-webhook/replay` |
 | `BILLING_ALERT_WEBHOOK_URL` | No (recommended for billing ops) | Incident webhook URL for warning/error records from `billing_alerts` |
 
 ### Client-Side Variables (prefixed with `VITE_`)
@@ -290,9 +295,11 @@ These are automatically detected by the AI SDK when using corresponding models:
    - `pnpm check`
    - `pnpm typecheck`
    - `pnpm test`
+   - confirm Clerk `convex` JWT template exists and `CLERK_JWT_ISSUER_DOMAIN` matches issuer
 3. Verify webhook delivery health in Stripe dashboard.
 4. Verify failed webhook queue is empty via `stripe_webhook_failures` table.
 5. Verify `token_pricing` contains active rows for each production model.
+6. Verify there are no stuck `pending` rows in `billing_cycles` (reconciliation cron should clear them).
 
 ### Incident Recovery
 
@@ -303,6 +310,7 @@ These are automatically detected by the AI SDK when using corresponding models:
    - call `POST /api/stripe-webhook/replay` with:
      - header `x-webhook-replay-token: <STRIPE_WEBHOOK_REPLAY_TOKEN>`
      - body `{ "eventId": "evt_..." }`
+   - optional hardening: set `STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS` to restrict replay source IPs
 4. Confirm event transitions to `processed` in `stripe_events`.
 5. Configure `BILLING_ALERT_WEBHOOK_URL` to ship warning/error alerts to incident tooling.
 

@@ -1,13 +1,13 @@
 import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus';
+import { requireAuthenticatedUserId } from './auth';
 
 /**
  * Record token usage for a request
  */
 export const recordUsage = mutation({
 	args: {
-		userId: v.string(),
 		conversationId: v.id('conversations'),
 		nodeId: v.id('nodes'),
 		model: v.string(),
@@ -18,6 +18,19 @@ export const recordUsage = mutation({
 		tokenCost: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
+		const conversation = await ctx.db.get(args.conversationId);
+		if (!conversation) {
+			throw new Error('Conversation not found');
+		}
+		if (conversation.userId !== userId) {
+			throw new Error('Forbidden');
+		}
+		const node = await ctx.db.get(args.nodeId);
+		if (!node || node.conversationId !== args.conversationId) {
+			throw new Error('Node not found');
+		}
+
 		const timestamp = Date.now();
 		const inputTokens = args.inputTokens ?? 0;
 		const outputTokens = args.outputTokens ?? 0;
@@ -44,7 +57,7 @@ export const recordUsage = mutation({
 		// Get or create current billing cycle for paid users
 		const subscription = await ctx.db
 			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.first();
 		const entitledSubscription =
 			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
@@ -57,7 +70,7 @@ export const recordUsage = mutation({
 			// Find or create active billing cycle
 			let billingCycle = await ctx.db
 				.query('billing_cycles')
-				.withIndex('userId', (q) => q.eq('userId', args.userId))
+				.withIndex('userId', (q) => q.eq('userId', userId))
 				.filter((q) => q.eq(q.field('status'), 'active'))
 				.first();
 
@@ -68,7 +81,7 @@ export const recordUsage = mutation({
 			) {
 				// Create new billing cycle
 				billingCycleId = await ctx.db.insert('billing_cycles', {
-					userId: args.userId,
+					userId,
 					subscriptionId: entitledSubscription._id,
 					periodStart: entitledSubscription.currentPeriodStart,
 					periodEnd: entitledSubscription.currentPeriodEnd,
@@ -110,7 +123,7 @@ export const recordUsage = mutation({
 			} else {
 				// Create new free tier usage record
 				await ctx.db.insert('free_tier_usage', {
-					userId: args.userId,
+					userId,
 					conversationId: args.conversationId,
 					tokensUsed: args.tokensUsed,
 					createdAt: timestamp,
@@ -121,7 +134,7 @@ export const recordUsage = mutation({
 
 		// Record usage in usage_records
 		await ctx.db.insert('usage_records', {
-			userId: args.userId,
+			userId,
 			conversationId: args.conversationId,
 			nodeId: args.nodeId,
 			model: args.model,
@@ -140,14 +153,14 @@ export const recordUsage = mutation({
  */
 export const getUserUsageRecords = query({
 	args: {
-		userId: v.string(),
 		limit: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const limit = args.limit || 100;
 		const records = await ctx.db
 			.query('usage_records')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.order('desc')
 			.take(limit);
 
@@ -163,6 +176,19 @@ export const getConversationUsage = query({
 		conversationId: v.id('conversations'),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
+		const conversation = await ctx.db.get(args.conversationId);
+		if (!conversation) {
+			return {
+				records: [],
+				totalTokens: 0,
+				totalCost: 0,
+			};
+		}
+		if (conversation.userId !== userId) {
+			throw new Error('Forbidden');
+		}
+
 		const records = await ctx.db
 			.query('usage_records')
 			.withIndex('conversationId', (q) =>
@@ -191,13 +217,12 @@ export const getConversationUsage = query({
  * Get current billing cycle usage
  */
 export const getCurrentCycleUsage = query({
-	args: {
-		userId: v.string(),
-	},
-	handler: async (ctx, args) => {
+	args: {},
+	handler: async (ctx) => {
+		const userId = await requireAuthenticatedUserId(ctx);
 		const billingCycle = await ctx.db
 			.query('billing_cycles')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.withIndex('userId', (q) => q.eq('userId', userId))
 			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
 
@@ -225,10 +250,14 @@ export const getCurrentCycleUsage = query({
  */
 export const aggregateUsageByCycle = query({
 	args: {
-		userId: v.string(),
 		billingCycleId: v.id('billing_cycles'),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
+		const billingCycle = await ctx.db.get(args.billingCycleId);
+		if (!billingCycle || billingCycle.userId !== userId) {
+			throw new Error('Forbidden');
+		}
 		const records = await ctx.db
 			.query('usage_records')
 			.withIndex('billingCycleId', (q) =>
@@ -275,6 +304,12 @@ export const getConversationTokenTotal = query({
 		conversationId: v.id('conversations'),
 	},
 	handler: async (ctx, args) => {
+		const userId = await requireAuthenticatedUserId(ctx);
+		const conversation = await ctx.db.get(args.conversationId);
+		if (!conversation || conversation.userId !== userId) {
+			throw new Error('Forbidden');
+		}
+
 		const freeTierUsage = await ctx.db
 			.query('free_tier_usage')
 			.withIndex('conversationId', (q) =>
@@ -322,6 +357,26 @@ export const getExpiredActiveCycles = internalQuery({
 			});
 		}
 		return expired;
+	},
+});
+
+export const getPendingCycles = internalQuery({
+	handler: async (ctx) => {
+		const pendingCycles = await ctx.db
+			.query('billing_cycles')
+			.filter((q) => q.eq(q.field('status'), 'pending'))
+			.collect();
+
+		const result = [];
+		for (const cycle of pendingCycles) {
+			const subscription = await ctx.db.get(cycle.subscriptionId);
+			if (!subscription) continue;
+			result.push({
+				...cycle,
+				stripeCustomerId: subscription.stripeCustomerId,
+			});
+		}
+		return result;
 	},
 });
 
