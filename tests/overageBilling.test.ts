@@ -26,6 +26,8 @@ vi.mock("../convex/_generated/api", () => ({
 		usage: {
 			getExpiredActiveCycles: "usage:getExpiredActiveCycles",
 			completeBillingCycle: "usage:completeBillingCycle",
+			markBillingCyclePendingIfActive: "usage:markBillingCyclePendingIfActive",
+			setBillingCycleStatus: "usage:setBillingCycleStatus",
 		},
 		billing: {
 			processOverageBilling: "billing:processOverageBilling",
@@ -69,7 +71,12 @@ describe("processOverageBilling", () => {
 		vi.resetModules();
 		mockInvoicesCreate.mockResolvedValue({ id: "inv_test_123" });
 		mockInvoiceItemsCreate.mockResolvedValue({ id: "ii_test_123" });
-		runMutationMock.mockResolvedValue(undefined);
+		runMutationMock.mockImplementation(async (ref: string) => {
+			if (ref === "usage:markBillingCyclePendingIfActive") {
+				return { updated: true };
+			}
+			return undefined;
+		});
 
 		const mod = await import("../convex/billing");
 		handler = (mod.processOverageBilling as any).handler;
@@ -89,6 +96,8 @@ describe("processOverageBilling", () => {
 			amount: 250, // $2.50 in cents
 			currency: "usd",
 			description: expect.stringContaining("Synapse token usage overage"),
+		}, {
+			idempotencyKey: "overage-item-cycle_1",
 		});
 
 		expect(mockInvoicesCreate).toHaveBeenCalledOnce();
@@ -100,6 +109,8 @@ describe("processOverageBilling", () => {
 				billingCycleId: "cycle_1",
 				type: "overage",
 			},
+		}, {
+			idempotencyKey: "overage-invoice-cycle_1",
 		});
 
 		expect(runMutationMock).toHaveBeenCalledWith(
@@ -121,6 +132,10 @@ describe("processOverageBilling", () => {
 		expect(mockInvoiceItemsCreate).not.toHaveBeenCalled();
 		expect(mockInvoicesCreate).not.toHaveBeenCalled();
 		expect(runMutationMock).toHaveBeenCalledWith(
+			"usage:markBillingCyclePendingIfActive",
+			{ billingCycleId: "cycle_1" },
+		);
+		expect(runMutationMock).toHaveBeenCalledWith(
 			"usage:completeBillingCycle",
 			{ billingCycleId: "cycle_1" },
 		);
@@ -135,6 +150,10 @@ describe("processOverageBilling", () => {
 		expect(result).toEqual({ processed: 1, invoiced: 0, errors: 0 });
 		expect(mockInvoiceItemsCreate).not.toHaveBeenCalled();
 		expect(mockInvoicesCreate).not.toHaveBeenCalled();
+		expect(runMutationMock).toHaveBeenCalledWith(
+			"usage:markBillingCyclePendingIfActive",
+			{ billingCycleId: "cycle_1" },
+		);
 		expect(runMutationMock).toHaveBeenCalledWith(
 			"usage:completeBillingCycle",
 			{ billingCycleId: "cycle_1" },
@@ -196,6 +215,7 @@ describe("processOverageBilling", () => {
 
 		expect(mockInvoiceItemsCreate).toHaveBeenCalledWith(
 			expect.objectContaining({ amount: 200 }), // Math.round(1.999 * 100) = 200
+			expect.any(Object),
 		);
 	});
 
@@ -215,6 +235,6 @@ describe("processOverageBilling", () => {
 		expect(result).toEqual({ processed: 3, invoiced: 2, errors: 0 });
 		expect(mockInvoiceItemsCreate).toHaveBeenCalledTimes(2);
 		expect(mockInvoicesCreate).toHaveBeenCalledTimes(2);
-		expect(runMutationMock).toHaveBeenCalledTimes(3); // all 3 marked completed
+		expect(runMutationMock).toHaveBeenCalledTimes(6); // 3 pending locks + 3 completion mutations
 	});
 });

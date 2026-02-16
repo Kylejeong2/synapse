@@ -75,19 +75,11 @@ export const checkTokenLimit = query({
 			const estimatedCost =
 				(requestedTokens / 1000) * PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD;
 
-			if (remainingCredit - estimatedCost < 0) {
-				return {
-					allowed: false,
-					reason: 'credit_exceeded',
-					remainingCredit,
-					estimatedCost,
-				};
-			}
-
 			return {
 				allowed: true,
 				remainingCredit,
 				estimatedCost,
+				projectedOverage: Math.max(0, estimatedCost - Math.max(remainingCredit, 0)),
 			};
 		}
 

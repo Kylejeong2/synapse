@@ -52,6 +52,8 @@ export default defineSchema({
       v.literal('past_due'),
       v.literal('unpaid'),
       v.literal('incomplete'),
+      v.literal('incomplete_expired'),
+      v.literal('paused'),
       v.literal('trialing'),
     ),
     currentPeriodStart: v.number(), // Unix timestamp in milliseconds
@@ -123,4 +125,13 @@ export default defineSchema({
   })
     .index('model', ['model'])
     .index('isActive', ['isActive']),
+
+  stripe_events: defineTable({
+    eventId: v.string(), // Stripe event ID for idempotency
+    type: v.string(), // Stripe event type
+    createdAt: v.number(), // Stripe event creation timestamp in ms
+    processedAt: v.number(), // Local processing timestamp in ms
+  })
+    .index('eventId', ['eventId'])
+    .index('createdAt', ['createdAt']),
 })

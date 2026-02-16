@@ -34,6 +34,14 @@ export const processOverageBilling = internalAction({
 
 		for (const cycle of expiredCycles) {
 			try {
+				const lockResult: { updated: boolean } = await ctx.runMutation(
+					internal.usage.markBillingCyclePendingIfActive,
+					{ billingCycleId: cycle._id },
+				);
+				if (!lockResult.updated) {
+					continue;
+				}
+
 				if (cycle.overageAmount > MIN_OVERAGE_INVOICE_THRESHOLD_USD) {
 					const amountCents = Math.round(cycle.overageAmount * 100);
 					const periodStart = new Date(cycle.periodStart).toLocaleDateString();
@@ -45,6 +53,8 @@ export const processOverageBilling = internalAction({
 						amount: amountCents,
 						currency: 'usd',
 						description: `Synapse token usage overage - billing period ${periodStart} to ${periodEnd}`,
+					}, {
+						idempotencyKey: `overage-item-${cycle._id}`,
 					});
 
 					// Create and auto-finalize the invoice
@@ -56,6 +66,8 @@ export const processOverageBilling = internalAction({
 							billingCycleId: cycle._id,
 							type: 'overage',
 						},
+					}, {
+						idempotencyKey: `overage-invoice-${cycle._id}`,
 					});
 
 					await ctx.runMutation(internal.usage.completeBillingCycle, {
@@ -72,6 +84,10 @@ export const processOverageBilling = internalAction({
 				}
 			} catch (error) {
 				errors++;
+				await ctx.runMutation(internal.usage.setBillingCycleStatus, {
+					billingCycleId: cycle._id,
+					status: 'active',
+				});
 				console.error(
 					`Failed to process overage billing for cycle ${cycle._id}:`,
 					error instanceof Error ? error.message : String(error),

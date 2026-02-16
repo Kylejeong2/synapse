@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Zap } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
 	const { user, isSignedIn } = useUser();
+	const { getToken } = useAuth();
 	const navigate = useNavigate();
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -35,11 +36,18 @@ function PricingPage() {
 
 		setIsLoading(true);
 		try {
+			const token = await getToken();
+			if (!token) {
+				throw new Error("No auth token available");
+			}
+
 			const response = await fetch("/api/create-checkout", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${token}`,
+				},
 				body: JSON.stringify({
-					userId: user.id,
 					userEmail: user.primaryEmailAddress?.emailAddress,
 				}),
 			});

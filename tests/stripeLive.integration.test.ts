@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 
 dotenv.config({ path: ".env.local" });
 
-const runLive = process.env.RUN_STRIPE_LIVE_TESTS === "1";
+const runLive =
+	process.env.RUN_STRIPE_LIVE_TESTS === "1" &&
+	process.env.STRIPE_ALLOW_NETWORK_TESTS === "1";
 const describeLive = runLive ? describe : describe.skip;
 
 describeLive("Stripe live integration (test mode)", () => {

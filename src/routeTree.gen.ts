@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TreeIdRouteImport } from './routes/tree.$id'
 import { Route as LogsIdRouteImport } from './routes/logs.$id'
 import { Route as ChatIdRouteImport } from './routes/chat.$id'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ApiCreateCheckoutRouteImport } from './routes/api.create-checkout'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
@@ -48,6 +49,11 @@ const ChatIdRoute = ChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCreateCheckoutRoute = ApiCreateCheckoutRouteImport.update({
   id: '/api/create-checkout',
   path: '/api/create-checkout',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/api/chat': typeof ApiChatRoute
   '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/api/chat': typeof ApiChatRoute
   '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/api/chat': typeof ApiChatRoute
   '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/chat'
     | '/api/create-checkout'
+    | '/api/stripe-webhook'
     | '/chat/$id'
     | '/logs/$id'
     | '/tree/$id'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/chat'
     | '/api/create-checkout'
+    | '/api/stripe-webhook'
     | '/chat/$id'
     | '/logs/$id'
     | '/tree/$id'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/api/chat'
     | '/api/create-checkout'
+    | '/api/stripe-webhook'
     | '/chat/$id'
     | '/logs/$id'
     | '/tree/$id'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiCreateCheckoutRoute: typeof ApiCreateCheckoutRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ChatIdRoute: typeof ChatIdRoute
   LogsIdRoute: typeof LogsIdRoute
   TreeIdRoute: typeof TreeIdRoute
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/create-checkout': {
       id: '/api/create-checkout'
       path: '/api/create-checkout'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   ApiChatRoute: ApiChatRoute,
   ApiCreateCheckoutRoute: ApiCreateCheckoutRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ChatIdRoute: ChatIdRoute,
   LogsIdRoute: LogsIdRoute,
   TreeIdRoute: TreeIdRoute,

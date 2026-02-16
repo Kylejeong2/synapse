@@ -313,3 +313,42 @@ export const completeBillingCycle = internalMutation({
 	},
 });
 
+/**
+ * Transition a billing cycle to pending iff it is currently active.
+ * Used as a lightweight lock before creating Stripe invoice artifacts.
+ */
+export const markBillingCyclePendingIfActive = internalMutation({
+	args: {
+		billingCycleId: v.id('billing_cycles'),
+	},
+	handler: async (ctx, args) => {
+		const cycle = await ctx.db.get(args.billingCycleId);
+		if (!cycle || cycle.status !== 'active') {
+			return { updated: false };
+		}
+
+		await ctx.db.patch(args.billingCycleId, {
+			status: 'pending',
+		});
+		return { updated: true };
+	},
+});
+
+/**
+ * Set billing cycle status explicitly (e.g. to recover pending->active on failure).
+ */
+export const setBillingCycleStatus = internalMutation({
+	args: {
+		billingCycleId: v.id('billing_cycles'),
+		status: v.union(
+			v.literal('active'),
+			v.literal('pending'),
+			v.literal('completed'),
+		),
+	},
+	handler: async (ctx, args) => {
+		await ctx.db.patch(args.billingCycleId, {
+			status: args.status,
+		});
+	},
+});

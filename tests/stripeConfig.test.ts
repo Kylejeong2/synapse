@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const stripeCtorMock = vi.fn(() => ({
-	customers: { list: vi.fn() },
-	checkout: { sessions: { create: vi.fn() } },
-}));
+const stripeCtorMock = vi.fn(function StripeCtorMock() {
+	return {
+		customers: { list: vi.fn() },
+		checkout: { sessions: { create: vi.fn() } },
+	};
+});
 
 vi.mock("stripe", () => ({
 	default: stripeCtorMock,

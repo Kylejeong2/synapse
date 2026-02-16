@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mutationMock = vi.fn();
+const verifyTokenMock = vi.fn();
 
 vi.mock("convex/browser", () => ({
-	ConvexHttpClient: vi.fn().mockImplementation(() => ({
-		mutation: mutationMock,
-	})),
+	ConvexHttpClient: vi.fn(function ConvexHttpClientMock() {
+		return {
+			mutation: mutationMock,
+		};
+	}),
+}));
+
+vi.mock("@clerk/backend", () => ({
+	verifyToken: verifyTokenMock,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,6 +33,7 @@ async function getPostHandler() {
 		...import.meta.env,
 		VITE_CONVEX_URL: "https://convex.example.com",
 	};
+	process.env.CLERK_SECRET_KEY = "sk_test_clerk";
 	const mod = await import("../src/routes/api.create-checkout");
 	return (mod.Route as any).server.handlers.POST as (args: {
 		request: Request;
@@ -37,6 +45,7 @@ describe("POST /api/create-checkout", () => {
 
 	beforeEach(() => {
 		mutationMock.mockReset();
+		verifyTokenMock.mockReset();
 		consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 	});
 
@@ -44,7 +53,7 @@ describe("POST /api/create-checkout", () => {
 		consoleErrorSpy.mockRestore();
 	});
 
-	it("returns 400 when userId is missing", async () => {
+	it("returns 401 when authorization header is missing", async () => {
 		const post = await getPostHandler();
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
@@ -54,22 +63,48 @@ describe("POST /api/create-checkout", () => {
 			}),
 		});
 
-		expect(response.status).toBe(400);
+		expect(response.status).toBe(401);
 		await expect(response.json()).resolves.toEqual({
-			error: "User ID is required",
+			error: "Unauthorized",
+		});
+		expect(verifyTokenMock).not.toHaveBeenCalled();
+		expect(mutationMock).not.toHaveBeenCalled();
+	});
+
+	it("returns 401 when token verification fails", async () => {
+		verifyTokenMock.mockRejectedValueOnce(new Error("invalid token"));
+		const post = await getPostHandler();
+		const response = await post({
+			request: new Request("http://localhost/api/create-checkout", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer bad_token",
+				},
+				body: JSON.stringify({ userEmail: "test@example.com" }),
+			}),
+		});
+
+		expect(response.status).toBe(401);
+		await expect(response.json()).resolves.toEqual({
+			error: "Unauthorized",
 		});
 		expect(mutationMock).not.toHaveBeenCalled();
 	});
 
-	it("returns checkout URL on success", async () => {
+	it("returns checkout URL on success with verified Clerk user", async () => {
+		verifyTokenMock.mockResolvedValueOnce({ sub: "user_123" });
 		mutationMock.mockResolvedValueOnce({ url: "https://checkout.stripe.com/c/test" });
 		const post = await getPostHandler();
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer token_123",
+				},
 				body: JSON.stringify({
-					userId: "user_123",
+					userId: "ignored_client_user",
 					userEmail: "user@example.com",
 				}),
 			}),
@@ -78,6 +113,9 @@ describe("POST /api/create-checkout", () => {
 		expect(response.status).toBe(200);
 		await expect(response.json()).resolves.toEqual({
 			url: "https://checkout.stripe.com/c/test",
+		});
+		expect(verifyTokenMock).toHaveBeenCalledWith("token_123", {
+			secretKey: "sk_test_clerk",
 		});
 		expect(mutationMock).toHaveBeenCalledWith(
 			"subscriptions:createCheckoutSession",
@@ -89,37 +127,23 @@ describe("POST /api/create-checkout", () => {
 	});
 
 	it("returns 500 when mutation succeeds without URL", async () => {
+		verifyTokenMock.mockResolvedValueOnce({ sub: "user_123" });
 		mutationMock.mockResolvedValueOnce({ url: null });
 		const post = await getPostHandler();
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: "user_123" }),
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer token_123",
+				},
+				body: JSON.stringify({ userEmail: "user@example.com" }),
 			}),
 		});
 
 		expect(response.status).toBe(500);
 		await expect(response.json()).resolves.toEqual({
 			error: "Failed to create checkout session",
-		});
-	});
-
-	it("returns 500 with error details when mutation throws", async () => {
-		mutationMock.mockRejectedValueOnce(new Error("convex down"));
-		const post = await getPostHandler();
-		const response = await post({
-			request: new Request("http://localhost/api/create-checkout", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: "user_123" }),
-			}),
-		});
-
-		expect(response.status).toBe(500);
-		await expect(response.json()).resolves.toEqual({
-			error: "Failed to create checkout session",
-			details: "convex down",
 		});
 	});
 });

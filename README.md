@@ -229,8 +229,12 @@ synapse/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | OpenAI API key for AI model access |
+| `CLERK_SECRET_KEY` | Yes | Clerk secret key for server-side auth verification |
 | `SERVER_URL` | No | Custom server URL (for production) |
 | `MODEL_NAME` | No | Override default model selection |
+| `STRIPE_SECRET_KEY` | Yes (for billing) | Stripe secret key used for checkout, invoices, and webhooks |
+| `STRIPE_PRICE_ID_SUBSCRIPTION` | Yes (for billing) | Stripe recurring price ID for the Pro subscription |
+| `STRIPE_WEBHOOK_SECRET` | Yes (for billing) | Stripe webhook signing secret for `/api/stripe-webhook` verification |
 
 ### Client-Side Variables (prefixed with `VITE_`)
 

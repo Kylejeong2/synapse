@@ -4,6 +4,12 @@ vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (options: unknown) => options,
 }));
 
+const verifyTokenMock = vi.fn();
+
+vi.mock("@clerk/backend", () => ({
+	verifyToken: verifyTokenMock,
+}));
+
 type FetchCall = {
 	input: RequestInfo | URL;
 	init?: RequestInit;
@@ -15,6 +21,7 @@ async function getPostHandler(convexUrl: string) {
 		...import.meta.env,
 		VITE_CONVEX_URL: convexUrl,
 	};
+	process.env.CLERK_SECRET_KEY = "sk_test_clerk";
 	const mod = await import("../src/routes/api.create-checkout");
 	return (mod.Route as any).server.handlers.POST as (args: {
 		request: Request;
@@ -28,6 +35,7 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 	beforeEach(() => {
 		consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		fetchCalls = [];
+		verifyTokenMock.mockReset();
 	});
 
 	afterEach(() => {
@@ -36,6 +44,7 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 	});
 
 	it("sends Convex mutation request and returns URL", async () => {
+		verifyTokenMock.mockResolvedValueOnce({ sub: "user_blackbox_verified" });
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -57,7 +66,10 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer token_blackbox",
+				},
 				body: JSON.stringify({
 					userId: "user_blackbox",
 					userEmail: "blackbox@example.com",
@@ -81,7 +93,7 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 				format: "convex_encoded_json",
 				args: [
 					{
-						userId: "user_blackbox",
+						userId: "user_blackbox_verified",
 						userEmail: "blackbox@example.com",
 					},
 				],
@@ -90,6 +102,7 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 	});
 
 	it("maps Convex/UDF errors to 500 responses with details", async () => {
+		verifyTokenMock.mockResolvedValueOnce({ sub: "user_fail_verified" });
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => {
@@ -110,7 +123,10 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer token_fail",
+				},
 				body: JSON.stringify({ userId: "user_fail" }),
 			}),
 		});
