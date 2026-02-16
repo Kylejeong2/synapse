@@ -8,9 +8,15 @@ export default defineSchema({
     rootNodeId: v.optional(v.id('nodes')), // Entry point (optional initially)
     lastAccessedAt: v.number(),
     defaultModel: v.optional(v.string()), // User's selected model for this conversation
+    isPinned: v.optional(v.boolean()), // Pinned to top of dashboard
+    tags: v.optional(v.array(v.string())), // User-assigned tags for organization
   })
     .index('userId', ['userId'])
-    .index('lastAccessed', ['userId', 'lastAccessedAt']),
+    .index('lastAccessed', ['userId', 'lastAccessedAt'])
+    .searchIndex('search_title', {
+      searchField: 'title',
+      filterFields: ['userId'],
+    }),
 
   nodes: defineTable({
     conversationId: v.id('conversations'),
@@ -29,5 +35,9 @@ export default defineSchema({
     toolResults: v.optional(v.array(v.any())), // Store tool results
   })
     .index('conversationId', ['conversationId'])
-    .index('parentId', ['parentId']),
+    .index('parentId', ['parentId'])
+    .searchIndex('search_content', {
+      searchField: 'userPrompt',
+      filterFields: ['conversationId'],
+    }),
 })

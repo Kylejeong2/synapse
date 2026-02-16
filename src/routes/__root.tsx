@@ -5,6 +5,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import ClerkProvider from "../integrations/clerk/provider";
 import ConvexProvider from "../integrations/convex/provider";
@@ -69,17 +70,20 @@ function RootComponent() {
  */
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
+				<script>{`(function(){try{var t=localStorage.getItem('synapse-theme');var s=window.matchMedia('(prefers-color-scheme:dark)').matches;var d=(t==='dark'||(t!=='light'&&s));if(d)document.documentElement.classList.add('dark')}catch(e){}})()`}</script>
 				<HeadContent />
 			</head>
 			<body>
-				<ConvexProvider>
-					<ClerkProvider>
-						{children}
-						<Toaster />
-					</ClerkProvider>
-				</ConvexProvider>
+				<ThemeProvider>
+					<ConvexProvider>
+						<ClerkProvider>
+							{children}
+							<Toaster />
+						</ClerkProvider>
+					</ConvexProvider>
+				</ThemeProvider>
 				<Scripts />
 			</body>
 		</html>

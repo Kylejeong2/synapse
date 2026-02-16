@@ -11,7 +11,9 @@ export function Stats() {
 						<div className="text-4xl sm:text-5xl font-semibold tracking-tight">
 							{s.value}
 						</div>
-						<div className="text-lg text-[#9c958e] mt-2">{s.label}</div>
+						<div className="text-lg text-[var(--landing-text-tertiary)] mt-2">
+							{s.label}
+						</div>
 					</div>
 				))}
 			</div>

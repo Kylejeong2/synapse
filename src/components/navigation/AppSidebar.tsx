@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Doc } from "convex/_generated/dataModel";
 import { Home, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -153,7 +154,10 @@ export function AppSidebar() {
 			</SidebarContent>
 
 			<SidebarFooter className="border-t p-4">
-				<HeaderUser />
+				<div className="flex items-center justify-between">
+					<HeaderUser />
+					<ThemeToggle />
+				</div>
 			</SidebarFooter>
 		</Sidebar>
 	);

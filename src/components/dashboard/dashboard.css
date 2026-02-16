@@ -1,0 +1,71 @@
+/*
+ * Dashboard palette (matches landing page warm tones)
+ *
+ * Usage: Apply .dashboard to the root dashboard element.
+ * Colors are available as CSS custom properties throughout child elements.
+ */
+
+.dashboard {
+	--db-bg: #faf8f3;
+	--db-surface: #f0ece4;
+	--db-subtle: #f5f2eb;
+	--db-border: #e8e3d9;
+	--db-muted-border: #d4cfc7;
+
+	--db-dark-bg: #1a1715;
+	--db-dark-surface: #262220;
+	--db-dark-border: #333;
+
+	--db-text: #1a1715;
+	--db-text-secondary: #6b6560;
+	--db-text-secondary-hover: #4a4540;
+	--db-text-tertiary: #9c958e;
+	--db-text-on-dark: #faf8f3;
+	--db-text-muted-dark: #b5aea6;
+
+	--db-accent: #c4642a;
+	--db-accent-hover: #b55a22;
+	--db-accent-light: rgba(196, 100, 42, 0.1);
+	--db-accent-border: rgba(196, 100, 42, 0.3);
+	--db-on-dark-overlay: rgba(250, 248, 243, 0.1);
+	--db-on-dark-divider: rgba(250, 248, 243, 0.2);
+
+	--db-sidebar-bg: #f5f2eb;
+	--db-sidebar-hover: #e8e3d9;
+
+	font-family:
+		"Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-feature-settings: "cv01", "cv02", "cv03", "cv04";
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.dark .dashboard {
+	--db-bg: #2a2623;
+	--db-surface: #332e2b;
+	--db-subtle: #2f2a27;
+	--db-border: #4a443f;
+	--db-muted-border: #5a534d;
+
+	--db-dark-bg: #363230;
+	--db-dark-surface: #3d3936;
+	--db-dark-border: #5a534d;
+
+	--db-text: #f0ece4;
+	--db-text-secondary: #b5aea6;
+	--db-text-secondary-hover: #c4bdb5;
+	--db-text-tertiary: #9c958e;
+	--db-text-on-dark: #f0ece4;
+	--db-text-muted-dark: #c4bdb5;
+
+	--db-accent: #d4773a;
+	--db-accent-hover: #e18447;
+	--db-accent-light: rgba(212, 119, 58, 0.16);
+	--db-accent-border: rgba(212, 119, 58, 0.4);
+	--db-on-dark-overlay: rgba(240, 236, 228, 0.12);
+	--db-on-dark-divider: rgba(240, 236, 228, 0.2);
+
+	--db-sidebar-bg: #2f2a27;
+	--db-sidebar-hover: #3a3430;
+}

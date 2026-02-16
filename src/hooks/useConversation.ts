@@ -47,6 +47,16 @@ export function useUpdateDefaultModel() {
 	return useMutation(api.conversations.updateDefaultModel);
 }
 
+/** Returns mutation to toggle pin status on a conversation. */
+export function useTogglePin() {
+	return useMutation(api.conversations.togglePin);
+}
+
+/** Returns mutation to update tags on a conversation. */
+export function useUpdateTags() {
+	return useMutation(api.conversations.updateTags);
+}
+
 /** Returns mutation to create a new message node in the conversation tree. */
 export function useCreateNode() {
 	return useMutation(api.nodes.create);

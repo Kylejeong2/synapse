@@ -27,7 +27,7 @@ export function Hero({ onSignIn }: HeroProps) {
 		<section className="pt-20 sm:pt-32 pb-8 landing-section">
 			<div className="w-full">
 				<div className="max-w-3xl mx-auto text-center mb-16 sm:mb-24">
-					<p className="text-base font-medium tracking-wide text-[#c4642a] mb-6">
+					<p className="text-base font-medium tracking-wide text-[var(--landing-accent)] mb-6">
 						Branching conversations for AI
 					</p>
 
@@ -35,14 +35,14 @@ export function Hero({ onSignIn }: HeroProps) {
 						Stop losing ideas to linear threads
 					</h1>
 
-					<p className="text-xl sm:text-2xl text-[#6b6560] leading-relaxed mb-12">
+					<p className="text-xl sm:text-2xl text-[var(--landing-text-secondary)] leading-relaxed mb-12">
 						Fork your AI conversation at any message.
 					</p>
 
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
 						<button
 							type="button"
-							className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[#1a1715] text-[#faf8f3] rounded-md hover:bg-[#262220]"
+							className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)]"
 							onClick={onSignIn}
 						>
 							Start for Free
@@ -50,7 +50,7 @@ export function Hero({ onSignIn }: HeroProps) {
 						</button>
 						<button
 							type="button"
-							className="w-full sm:w-auto h-14 px-10 text-lg font-medium text-[#1a1715] border border-[#e8e3d9] rounded-md hover:bg-[#f0ece4]"
+							className="w-full sm:w-auto h-14 px-10 text-lg font-medium text-[var(--landing-text)] border border-[var(--landing-border)] rounded-md hover:bg-[var(--landing-surface)]"
 							onClick={() =>
 								document
 									.querySelector("[data-section='how']")
@@ -61,10 +61,10 @@ export function Hero({ onSignIn }: HeroProps) {
 						</button>
 					</div>
 
-					<p className="text-xl sm:text-2xl text-[#9c958e] mt-10">
+					<p className="text-xl sm:text-2xl text-[var(--landing-text-tertiary)] mt-10">
 						Works with{" "}
 						<span
-							className="inline-block font-semibold text-[#1a1715] transition-opacity duration-300"
+							className="inline-block font-semibold text-[var(--landing-text)] transition-opacity duration-300"
 							style={{ opacity: fading ? 0 : 1 }}
 						>
 							{providers[index]}

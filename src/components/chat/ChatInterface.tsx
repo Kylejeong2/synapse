@@ -1,6 +1,7 @@
 import { type UIMessage, useChat } from "@ai-sdk/react";
 import { useNavigate } from "@tanstack/react-router";
 import { TextStreamChatTransport } from "ai";
+import { Home } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -229,6 +230,14 @@ export function ChatInterface({
 				<div className="flex items-center justify-between px-4 py-2">
 					<div className="flex items-center gap-2">
 						<SidebarTrigger />
+						<button
+							type="button"
+							onClick={() => navigate({ to: "/" })}
+							className="flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+							title="Back to dashboard"
+						>
+							<Home className="h-4 w-4" />
+						</button>
 						{forkingFromPrompt && (
 							<Badge variant="secondary" className="text-xs">
 								Forking from: {forkingFromPrompt.slice(0, 50)}
