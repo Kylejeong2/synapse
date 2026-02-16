@@ -9,6 +9,7 @@
  */
 
 import type * as conversations from "../conversations.js";
+import type * as dashboard from "../dashboard.js";
 import type * as logger from "../logger.js";
 import type * as nodes from "../nodes.js";
 
@@ -28,6 +29,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
+  dashboard: typeof dashboard;
   logger: typeof logger;
   nodes: typeof nodes;
 }>;

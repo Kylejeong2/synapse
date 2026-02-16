@@ -1,0 +1,38 @@
+/*
+ * Dashboard palette (matches landing page warm tones)
+ *
+ * Usage: Apply .dashboard to the root dashboard element.
+ * Colors are available as CSS custom properties throughout child elements.
+ */
+
+.dashboard {
+	--db-bg: #faf8f3;
+	--db-surface: #f0ece4;
+	--db-subtle: #f5f2eb;
+	--db-border: #e8e3d9;
+	--db-muted-border: #d4cfc7;
+
+	--db-dark-bg: #1a1715;
+	--db-dark-surface: #262220;
+	--db-dark-border: #333;
+
+	--db-text: #1a1715;
+	--db-text-secondary: #6b6560;
+	--db-text-secondary-hover: #4a4540;
+	--db-text-tertiary: #9c958e;
+	--db-text-on-dark: #faf8f3;
+	--db-text-muted-dark: #b5aea6;
+
+	--db-accent: #c4642a;
+	--db-accent-hover: #b55a22;
+	--db-accent-light: rgba(196, 100, 42, 0.1);
+	--db-accent-border: rgba(196, 100, 42, 0.3);
+
+	--db-sidebar-bg: #f5f2eb;
+	--db-sidebar-hover: #e8e3d9;
+
+	font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
