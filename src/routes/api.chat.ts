@@ -21,7 +21,7 @@ import {
 	logger,
 	Timer,
 } from "../lib/logger";
-import { calculateTokenCost } from "../lib/tokenPricing";
+import { requireClerkUserId } from "../lib/server/clerkAuth";
 import { calculateTotalTokens, type TokenUsage } from "../lib/tokens";
 
 /**
@@ -79,6 +79,12 @@ export const Route = createFileRoute("/api/chat")({
 				};
 
 				try {
+					const auth = await requireClerkUserId(request);
+					if ("response" in auth) {
+						return auth.response;
+					}
+					logContext.user_id = auth.userId;
+
 					const body = await request.json();
 					const {
 						messages: incomingMessages,
@@ -126,6 +132,12 @@ export const Route = createFileRoute("/api/chat")({
 								headers: { "Content-Type": "application/json" },
 							},
 						);
+					}
+					if (conversation.userId !== auth.userId) {
+						return new Response(JSON.stringify({ error: "Forbidden" }), {
+							status: 403,
+							headers: { "Content-Type": "application/json" },
+						});
 					}
 
 					const userId = conversation.userId;
@@ -183,7 +195,7 @@ export const Route = createFileRoute("/api/chat")({
 					const estimatedTokens = Math.ceil(prompt.length / 4) + 1000; // Add buffer for response
 					const tokenLimitCheck = await convexClient.query(
 						api.rateLimiting.checkTokenLimit,
-						{ userId, requestedTokens: estimatedTokens },
+						{ userId, requestedTokens: estimatedTokens, model: modelId },
 					);
 
 					if (!tokenLimitCheck.allowed) {
@@ -297,14 +309,6 @@ export const Route = createFileRoute("/api/chat")({
 									modelConfig,
 								);
 
-								// Calculate token cost
-								const tokenCost = calculateTokenCost(
-									modelId,
-									tokenData.prompt,
-									tokenData.completion,
-									tokenData.thinking || 0,
-								);
-
 								// Update log context with response data
 								logContext.response_length = text.length;
 								logContext.tokens_prompt = tokenData.prompt;
@@ -330,7 +334,9 @@ export const Route = createFileRoute("/api/chat")({
 									nodeId: newNodeId as Id<"nodes">,
 									model: modelId,
 									tokensUsed: tokenData.total,
-									tokenCost,
+									inputTokens: tokenData.prompt,
+									outputTokens: tokenData.completion,
+									thinkingTokens: tokenData.thinking || 0,
 								});
 
 								// Update last accessed time

@@ -9,4 +9,18 @@ crons.interval(
 	internal.billing.processOverageBilling,
 );
 
+crons.interval(
+	'retry failed stripe webhooks',
+	{ minutes: 10 },
+	internal.stripeWebhooks.retryFailedWebhookEvents,
+	{ limit: 25 },
+);
+
+crons.interval(
+	'dispatch billing alerts',
+	{ minutes: 5 },
+	(internal as any).billingAlerts.dispatchBillingAlerts,
+	{ limit: 25 },
+);
+
 export default crons;

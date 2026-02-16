@@ -1,6 +1,8 @@
-import { mutation, query } from './_generated/server';
+import { api } from './_generated/api';
+import { internalAction, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD } from './pricing';
+import { stripe } from './stripe';
 
 const subscriptionStatus = v.union(
 	v.literal('active'),
@@ -18,6 +20,132 @@ const invoicePaymentStatus = v.union(
 	v.literal('failed'),
 	v.literal('open'),
 );
+
+function toMillis(unixSeconds: number | null | undefined): number {
+	if (!unixSeconds) return Date.now();
+	return unixSeconds * 1000;
+}
+
+function getStripeSubscriptionId(value: unknown): string | undefined {
+	if (!value) return undefined;
+	return typeof value === 'string' ? value : (value as { id: string }).id;
+}
+
+function getStripeCustomerId(value: unknown): string | undefined {
+	if (!value) return undefined;
+	return typeof value === 'string' ? value : (value as { id: string }).id;
+}
+
+async function processStripeEventInConvex(ctx: any, event: any) {
+	if (event.type === 'checkout.session.completed') {
+		const session = event.data.object;
+		const userId = session.metadata?.clerkUserId;
+		const stripeSubscriptionId = getStripeSubscriptionId(session.subscription);
+		if (userId && stripeSubscriptionId) {
+			const subscription = await stripe.subscriptions.retrieve(
+				String(stripeSubscriptionId),
+			);
+			const rawSubscription = subscription as unknown as {
+				current_period_start?: number;
+				current_period_end?: number;
+			};
+			await ctx.runMutation(api.stripeWebhooks.upsertSubscriptionFromStripe, {
+				userId,
+				stripeCustomerId: String(subscription.customer),
+				stripeSubscriptionId: subscription.id,
+				status: subscription.status,
+				currentPeriodStart: toMillis(rawSubscription.current_period_start),
+				currentPeriodEnd: toMillis(rawSubscription.current_period_end),
+				includedTokenCredit: DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
+				cancelAtPeriodEnd: subscription.cancel_at_period_end,
+			});
+		}
+		return;
+	}
+
+	if (
+		event.type === 'customer.subscription.created' ||
+		event.type === 'customer.subscription.updated' ||
+		event.type === 'customer.subscription.deleted'
+	) {
+		const subscription = event.data.object;
+		const stripeCustomerId = String(subscription.customer);
+		const userId =
+			subscription.metadata?.clerkUserId ||
+			(await ctx.runQuery(api.stripeWebhooks.getUserIdByStripeCustomerId, {
+				stripeCustomerId,
+			}));
+		if (userId) {
+			await ctx.runMutation(api.stripeWebhooks.upsertSubscriptionFromStripe, {
+				userId,
+				stripeCustomerId,
+				stripeSubscriptionId: subscription.id,
+				status: subscription.status,
+				currentPeriodStart: toMillis(subscription.current_period_start),
+				currentPeriodEnd: toMillis(subscription.current_period_end),
+				includedTokenCredit: DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
+				cancelAtPeriodEnd: subscription.cancel_at_period_end,
+			});
+		}
+		return;
+	}
+
+	if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
+		const invoice = event.data.object;
+		const stripeSubscriptionId = getStripeSubscriptionId(invoice.subscription);
+		const stripeCustomerId = getStripeCustomerId(invoice.customer);
+		await ctx.runMutation(api.stripeWebhooks.updateSubscriptionByStripeIds, {
+			stripeSubscriptionId,
+			stripeCustomerId,
+			status: event.type === 'invoice.paid' ? 'active' : 'past_due',
+			lastInvoicePaymentStatus:
+				event.type === 'invoice.paid' ? 'paid' : 'failed',
+		});
+		if (event.type === 'invoice.payment_failed') {
+			await ctx.runMutation(api.stripeWebhooks.logBillingAlert, {
+				source: 'invoice',
+				severity: 'warning',
+				message: 'Invoice payment failed',
+				context: JSON.stringify({
+					eventId: event.id,
+					stripeSubscriptionId,
+					stripeCustomerId,
+					invoiceId: invoice.id,
+				}),
+			});
+		}
+		return;
+	}
+
+	if (event.type === 'invoice.finalized') {
+		const invoice = event.data.object;
+		await ctx.runMutation(api.stripeWebhooks.updateSubscriptionByStripeIds, {
+			stripeSubscriptionId: getStripeSubscriptionId(invoice.subscription),
+			stripeCustomerId: getStripeCustomerId(invoice.customer),
+			lastInvoicePaymentStatus: 'open',
+		});
+		return;
+	}
+
+	if (event.type === 'customer.subscription.trial_will_end') {
+		const subscription = event.data.object;
+		await ctx.runMutation(api.stripeWebhooks.updateSubscriptionByStripeIds, {
+			stripeSubscriptionId: subscription.id,
+			stripeCustomerId: String(subscription.customer),
+			status: 'trialing',
+		});
+		await ctx.runMutation(api.stripeWebhooks.logBillingAlert, {
+			source: 'invoice',
+			severity: 'info',
+			message: 'Subscription trial will end soon',
+			context: JSON.stringify({
+				eventId: event.id,
+				stripeSubscriptionId: subscription.id,
+				stripeCustomerId: String(subscription.customer),
+			}),
+		});
+	}
+}
 
 async function upsertBillingCustomerMappingInternal(
 	ctx: any,
@@ -175,6 +303,7 @@ export const markWebhookEventFailed = mutation({
 				error: args.error,
 			}),
 			createdAt: now,
+			notificationAttempts: 0,
 		});
 
 		return { success: true };
@@ -370,6 +499,62 @@ export const logBillingAlert = mutation({
 			message: args.message,
 			context: args.context,
 			createdAt: Date.now(),
+			notificationAttempts: 0,
 		});
+	},
+});
+
+/**
+ * Auto-retry unresolved Stripe webhook failures using canonical Stripe event data.
+ */
+export const retryFailedWebhookEvents = internalAction({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (
+		ctx,
+		args,
+	): Promise<{ scanned: number; retried: number; processed: number; errors: number }> => {
+		const failures: Array<{ eventId: string; type: string }> = await ctx.runQuery(
+			(api as any).stripeWebhooks.listFailedWebhookEvents,
+			{
+				limit: args.limit ?? 25,
+			},
+		);
+
+		let retried = 0;
+		let processed = 0;
+		let errors = 0;
+
+		for (const failure of failures) {
+			retried++;
+			try {
+				const event = await stripe.events.retrieve(failure.eventId);
+				const state = await ctx.runMutation(
+					api.stripeWebhooks.beginWebhookEventProcessing,
+					{
+						eventId: event.id,
+						type: event.type,
+						createdAt: event.created * 1000,
+					},
+				);
+				if (!state.proceed) continue;
+
+				await processStripeEventInConvex(ctx, event);
+				await ctx.runMutation(api.stripeWebhooks.markWebhookEventProcessed, {
+					eventId: event.id,
+				});
+				processed++;
+			} catch (error) {
+				errors++;
+				await ctx.runMutation(api.stripeWebhooks.markWebhookEventFailed, {
+					eventId: failure.eventId,
+					type: failure.type,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		return { scanned: failures.length, retried, processed, errors };
 	},
 });

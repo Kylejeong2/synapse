@@ -236,6 +236,7 @@ synapse/
 | `STRIPE_PRICE_ID_SUBSCRIPTION` | Yes (for billing) | Stripe recurring price ID for the Pro subscription |
 | `STRIPE_WEBHOOK_SECRET` | Yes (for billing) | Stripe webhook signing secret for `/api/stripe-webhook` verification |
 | `STRIPE_WEBHOOK_REPLAY_TOKEN` | Yes (for billing ops) | Shared secret for manual webhook replay endpoint `/api/stripe-webhook/replay` |
+| `BILLING_ALERT_WEBHOOK_URL` | No (recommended for billing ops) | Incident webhook URL for warning/error records from `billing_alerts` |
 
 ### Client-Side Variables (prefixed with `VITE_`)
 
@@ -291,15 +292,19 @@ These are automatically detected by the AI SDK when using corresponding models:
    - `pnpm test`
 3. Verify webhook delivery health in Stripe dashboard.
 4. Verify failed webhook queue is empty via `stripe_webhook_failures` table.
+5. Verify `token_pricing` contains active rows for each production model.
 
 ### Incident Recovery
 
 1. Inspect `stripe_webhook_failures` and `billing_alerts` tables.
-2. Replay failed event:
+2. Confirm automatic retry job is healthy:
+   - Cron: `retry failed stripe webhooks` (every 10 minutes)
+3. Replay failed event manually when needed:
    - call `POST /api/stripe-webhook/replay` with:
      - header `x-webhook-replay-token: <STRIPE_WEBHOOK_REPLAY_TOKEN>`
      - body `{ "eventId": "evt_..." }`
-3. Confirm event transitions to `processed` in `stripe_events`.
+4. Confirm event transitions to `processed` in `stripe_events`.
+5. Configure `BILLING_ALERT_WEBHOOK_URL` to ship warning/error alerts to incident tooling.
 
 ## Troubleshooting
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../convex/_generated/server', () => ({
 	mutation: (opts: { handler: Function }) => opts,
 	query: (opts: { handler: Function }) => opts,
+	internalAction: (opts: { handler: Function }) => opts,
 }));
 
 function q(firstValue: unknown) {

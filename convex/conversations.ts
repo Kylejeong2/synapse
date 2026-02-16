@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
 import { FREE_TIER_MAX_CONVERSATIONS } from './pricing'
+import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus'
 
 // Create a new conversation
 export const create = mutation({
@@ -19,11 +20,14 @@ export const create = mutation({
       const subscription = await ctx.db
         .query('subscriptions')
         .withIndex('userId', (q) => q.eq('userId', args.userId))
-        .filter((q) => q.eq(q.field('status'), 'active'))
         .first()
 
+      const hasBillingEntitlement = Boolean(
+        subscription && isBillingEntitledSubscriptionStatus(subscription.status),
+      )
+
       // If no subscription, check free tier limits
-      if (!subscription) {
+      if (!hasBillingEntitlement) {
         const existingFreeTierConversations = await ctx.db
           .query('conversations')
           .withIndex('userId', (q) => q.eq('userId', args.userId))
@@ -41,7 +45,7 @@ export const create = mutation({
         userId: args.userId,
         title: args.title,
         lastAccessedAt: Date.now(),
-        isFreeTier: !subscription, // Mark as free tier if no subscription
+        isFreeTier: !hasBillingEntitlement, // Mark as free tier if no paid/trial entitlement
       })
       
       logConvexOperation({

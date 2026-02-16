@@ -1,10 +1,40 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD } from './pricing';
+import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD, PRO_MONTHLY_PRICE_USD } from './pricing';
 import { stripe, getStripePriceId } from './stripe';
+import { isOpenBillingSubscriptionStatus } from './subscriptionStatus';
+
+let validatedPriceId: string | null = null;
 
 function getServerUrl(): string {
 	return process.env.SERVER_URL || 'http://localhost:3000';
+}
+
+async function assertStripeSubscriptionPriceMatchesCatalog(): Promise<void> {
+	const priceId = getStripePriceId();
+	if (validatedPriceId === priceId) return;
+
+	const price = await stripe.prices.retrieve(priceId);
+	if (!price.active) {
+		throw new Error(`Stripe price '${priceId}' is not active`);
+	}
+	if (!price.recurring) {
+		throw new Error(`Stripe price '${priceId}' must be recurring for subscriptions`);
+	}
+	if (price.unit_amount == null) {
+		throw new Error(
+			`Stripe price '${priceId}' has no unit_amount. Configure a fixed recurring unit amount.`,
+		);
+	}
+
+	const expectedCents = Math.round(PRO_MONTHLY_PRICE_USD * 100);
+	if (price.unit_amount !== expectedCents) {
+		throw new Error(
+			`Stripe price mismatch: expected ${expectedCents} cents, got ${price.unit_amount} cents for '${priceId}'`,
+		);
+	}
+
+	validatedPriceId = priceId;
 }
 
 /**
@@ -105,17 +135,20 @@ export const createCheckoutSession = mutation({
 		const existingSubscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
 
-		if (existingSubscription) {
-			throw new Error('User already has an active subscription');
+		if (
+			existingSubscription &&
+			isOpenBillingSubscriptionStatus(existingSubscription.status)
+		) {
+			throw new Error('User already has an existing subscription');
 		}
 
 		const customerId = await findOrCreateStripeCustomer(ctx, {
 			userId: args.userId,
 			userEmail: args.userEmail,
 		});
+		await assertStripeSubscriptionPriceMatchesCatalog();
 
 		const session = await stripe.checkout.sessions.create({
 			customer: customerId,

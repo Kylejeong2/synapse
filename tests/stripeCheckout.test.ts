@@ -20,6 +20,14 @@ type StripeModule = {
 				}>;
 			};
 		};
+		prices: {
+			retrieve: (id: string) => Promise<{
+				id: string;
+				active: boolean;
+				recurring: Record<string, unknown> | null;
+				unit_amount: number | null;
+			}>;
+		};
 	};
 	getStripePriceId: () => string;
 };
@@ -34,6 +42,14 @@ const mockStripe: StripeModule['stripe'] = {
 		sessions: {
 			create: vi.fn(async () => ({ id: 'cs_test', url: 'https://stripe/checkout' })),
 		},
+	},
+	prices: {
+		retrieve: vi.fn(async (id: string) => ({
+			id,
+			active: true,
+			recurring: { interval: 'month' },
+			unit_amount: 2000,
+		})),
 	},
 };
 
@@ -57,6 +73,7 @@ function createCtx({
 				if (table === 'subscriptions') {
 					return {
 						withIndex: () => ({
+							first: vi.fn(async () => existingSubscription),
 							filter: () => ({
 								first: vi.fn(async () => existingSubscription),
 							}),
@@ -80,10 +97,17 @@ function createCtx({
 
 describe('Stripe checkout session', () => {
 	beforeEach(() => {
+		vi.resetModules();
 		vi.clearAllMocks();
 		delete process.env.SERVER_URL;
 		(mockStripe.customers.list as any).mockResolvedValue({ data: [] });
 		(mockStripe.customers.create as any).mockResolvedValue({ id: 'cus_new' });
+		(mockStripe.prices.retrieve as any).mockResolvedValue({
+			id: 'price_test',
+			active: true,
+			recurring: { interval: 'month' },
+			unit_amount: 2000,
+		});
 		(mockStripe.checkout.sessions.create as any).mockResolvedValue({
 			id: 'cs_test',
 			url: 'https://stripe/checkout',
@@ -135,6 +159,7 @@ describe('Stripe checkout session', () => {
 
 		expect(mockStripe.customers.list).not.toHaveBeenCalled();
 		expect(mockStripe.customers.create).not.toHaveBeenCalled();
+		expect(mockStripe.prices.retrieve).toHaveBeenCalledWith('price_test');
 		expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
 			expect.objectContaining({
 				customer: 'cus_mapped',
@@ -175,10 +200,10 @@ describe('Stripe checkout session', () => {
 		).rejects.toThrow('Stripe unavailable');
 	});
 
-	it('throws if user already has an active subscription', async () => {
+	it('throws if user already has an existing subscription', async () => {
 		const { createCheckoutSession } = await import('../convex/subscriptions');
 		const ctx = createCtx({
-			existingSubscription: { _id: 'sub_1' },
+			existingSubscription: { _id: 'sub_1', status: 'active' },
 			mappedCustomer: null,
 		});
 
@@ -187,6 +212,24 @@ describe('Stripe checkout session', () => {
 				userId: 'user_3',
 				userEmail: 'blocked@example.com',
 			}),
-		).rejects.toThrow('User already has an active subscription');
+		).rejects.toThrow('User already has an existing subscription');
+	});
+
+	it('fails checkout when Stripe catalog price mismatches product price constant', async () => {
+		(mockStripe.prices.retrieve as any).mockResolvedValueOnce({
+			id: 'price_test',
+			active: true,
+			recurring: { interval: 'month' },
+			unit_amount: 999,
+		});
+		const { createCheckoutSession } = await import('../convex/subscriptions');
+		const ctx = createCtx({ existingSubscription: null, mappedCustomer: null });
+
+		await expect(
+			(createCheckoutSession as any)._handler(ctx as any, {
+				userId: 'user_mismatch',
+				userEmail: 'mismatch@example.com',
+			}),
+		).rejects.toThrow('Stripe price mismatch');
 	});
 });

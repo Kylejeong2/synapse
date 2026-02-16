@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus';
 
 /**
  * Record token usage for a request
@@ -11,21 +12,48 @@ export const recordUsage = mutation({
 		nodeId: v.id('nodes'),
 		model: v.string(),
 		tokensUsed: v.number(),
-		tokenCost: v.number(),
+		inputTokens: v.optional(v.number()),
+		outputTokens: v.optional(v.number()),
+		thinkingTokens: v.optional(v.number()),
+		tokenCost: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const timestamp = Date.now();
+		const inputTokens = args.inputTokens ?? 0;
+		const outputTokens = args.outputTokens ?? 0;
+		const thinkingTokens = args.thinkingTokens ?? 0;
+
+		const pricing = await ctx.db
+			.query('token_pricing')
+			.withIndex('model', (q) => q.eq('model', args.model))
+			.filter((q) => q.eq(q.field('isActive'), true))
+			.first();
+
+		const effectiveTokenCost = pricing
+			? inputTokens * pricing.pricePerTokenInput +
+				outputTokens * pricing.pricePerTokenOutput +
+				thinkingTokens * (pricing.pricePerTokenThinking ?? pricing.pricePerTokenOutput)
+			: args.tokenCost;
+
+		if (effectiveTokenCost === undefined) {
+			throw new Error(
+				`Cannot determine token cost for model '${args.model}'. Add active token_pricing data or pass tokenCost.`,
+			);
+		}
 
 		// Get or create current billing cycle for paid users
 		const subscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
+		const entitledSubscription =
+			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
+				? subscription
+				: null;
 
 		let billingCycleId: string | undefined;
 
-		if (subscription) {
+		if (entitledSubscription) {
 			// Find or create active billing cycle
 			let billingCycle = await ctx.db
 				.query('billing_cycles')
@@ -35,18 +63,18 @@ export const recordUsage = mutation({
 
 			if (
 				!billingCycle ||
-				billingCycle.periodStart < subscription.currentPeriodStart ||
-				billingCycle.periodEnd > subscription.currentPeriodEnd
+				billingCycle.periodStart < entitledSubscription.currentPeriodStart ||
+				billingCycle.periodEnd > entitledSubscription.currentPeriodEnd
 			) {
 				// Create new billing cycle
 				billingCycleId = await ctx.db.insert('billing_cycles', {
 					userId: args.userId,
-					subscriptionId: subscription._id,
-					periodStart: subscription.currentPeriodStart,
-					periodEnd: subscription.currentPeriodEnd,
+					subscriptionId: entitledSubscription._id,
+					periodStart: entitledSubscription.currentPeriodStart,
+					periodEnd: entitledSubscription.currentPeriodEnd,
 					tokensUsed: 0,
 					tokenCost: 0,
-					includedCredit: subscription.includedTokenCredit,
+					includedCredit: entitledSubscription.includedTokenCredit,
 					overageAmount: 0,
 					status: 'active',
 				});
@@ -57,12 +85,13 @@ export const recordUsage = mutation({
 			// Update billing cycle totals
 			await ctx.db.patch(billingCycleId as any, {
 				tokensUsed: (billingCycle?.tokensUsed || 0) + args.tokensUsed,
-				tokenCost: (billingCycle?.tokenCost || 0) + args.tokenCost,
+				tokenCost: (billingCycle?.tokenCost || 0) + effectiveTokenCost,
 				overageAmount: Math.max(
 					0,
 					(billingCycle?.tokenCost || 0) +
-						args.tokenCost -
-						(billingCycle?.includedCredit || subscription.includedTokenCredit),
+						effectiveTokenCost -
+						(billingCycle?.includedCredit ||
+							entitledSubscription.includedTokenCredit),
 				),
 			});
 		} else {
@@ -97,7 +126,7 @@ export const recordUsage = mutation({
 			nodeId: args.nodeId,
 			model: args.model,
 			tokensUsed: args.tokensUsed,
-			tokenCost: args.tokenCost,
+			tokenCost: effectiveTokenCost,
 			timestamp,
 			billingCycleId: billingCycleId as any,
 		});

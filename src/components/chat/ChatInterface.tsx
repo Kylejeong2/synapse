@@ -1,5 +1,5 @@
 import { type UIMessage, useChat } from "@ai-sdk/react";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
 import { TextStreamChatTransport } from "ai";
 import { useQuery } from "convex/react";
@@ -35,6 +35,7 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
 	const navigate = useNavigate();
 	const { user } = useUser();
+	const { getToken } = useAuth();
 	const conversation = useConversation(conversationId);
 	const ancestors = useNodeAncestors(fromNodeId ?? null);
 	const updateDefaultModel = useUpdateDefaultModel();
@@ -45,6 +46,23 @@ export function ChatInterface({
 
 	// Model state - initialize from conversation's defaultModel or fallback to default
 	const [selectedModel, setSelectedModel] = useState<ModelId>(DEFAULT_MODEL);
+	const [authToken, setAuthToken] = useState<string | null>(null);
+
+	useEffect(() => {
+		let mounted = true;
+		(async () => {
+			try {
+				const token = await getToken();
+				if (mounted) setAuthToken(token ?? null);
+			} catch {
+				if (mounted) setAuthToken(null);
+			}
+		})();
+
+		return () => {
+			mounted = false;
+		};
+	}, [getToken]);
 
 	// Sync model selection with conversation's defaultModel when it loads
 	useEffect(() => {
@@ -107,13 +125,18 @@ export function ChatInterface({
 		() =>
 			new TextStreamChatTransport({
 				api: "/api/chat",
+				headers: authToken
+					? {
+							Authorization: `Bearer ${authToken}`,
+						}
+					: undefined,
 				body: {
 					conversationId,
 					nodeId: fromNodeId,
 					model: selectedModel,
 				},
 			}),
-		[conversationId, fromNodeId, selectedModel],
+		[authToken, conversationId, fromNodeId, selectedModel],
 	);
 
 	const { messages, sendMessage, status } = useChat({
@@ -210,7 +233,14 @@ export function ChatInterface({
 		return [...initialMessages, ...messages];
 	}, [initialMessages, messages]);
 
-	const handleSend = (text: string) => {
+	const handleSend = async (text: string) => {
+		let token = authToken;
+		if (!token) {
+			token = (await getToken()) ?? null;
+			setAuthToken(token);
+		}
+		if (!token) return;
+
 		sendMessage({ role: "user", parts: [{ type: "text", text }] });
 	};
 
@@ -266,15 +296,15 @@ export function ChatInterface({
 								<div className="flex items-center gap-1">
 									<span>Credit:</span>
 									<span className="font-medium">
-										${usageStats.remainingCredit.toFixed(2)} / $
-										{usageStats.includedCredit.toFixed(2)}
+										${usageStats.remainingCredit?.toFixed(2) ?? "0.00"} / $
+										{usageStats.includedCredit?.toFixed(2) ?? "0.00"}
 									</span>
 								</div>
-								{usageStats.overageAmount > 0 && (
+								{(usageStats.overageAmount ?? 0) > 0 && (
 									<div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500">
 										<span>Overage:</span>
 										<span className="font-medium">
-											${usageStats.overageAmount.toFixed(2)}
+											${usageStats.overageAmount?.toFixed(2) ?? "0.00"}
 										</span>
 									</div>
 								)}
@@ -291,7 +321,7 @@ export function ChatInterface({
 									<span>Tokens:</span>
 									<span className="font-medium">
 										{usageStats.tokensUsed.toLocaleString()} /{" "}
-										{usageStats.maxTokens.toLocaleString()}
+										{(usageStats.maxTokens ?? 0).toLocaleString()}
 									</span>
 								</div>
 								<div className="flex items-center gap-1">

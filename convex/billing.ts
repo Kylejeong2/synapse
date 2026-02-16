@@ -135,6 +135,7 @@ export const logBillingAlert = internalMutation({
 			message: args.message,
 			context: args.context,
 			createdAt: Date.now(),
+			notificationAttempts: 0,
 		});
 	},
 });

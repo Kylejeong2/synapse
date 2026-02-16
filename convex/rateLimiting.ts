@@ -6,6 +6,7 @@ import {
 	FREE_TIER_MAX_TOKENS,
 	PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD,
 } from './pricing';
+import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus';
 
 /**
  * Check if user can make a request (rate limiting)
@@ -20,11 +21,13 @@ export const checkRateLimit = query({
 		const subscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
+		const hasBillingEntitlement = Boolean(
+			subscription && isBillingEntitledSubscriptionStatus(subscription.status),
+		);
 
 		// Paid users have no rate limits (only token credit limits)
-		if (subscription) {
+		if (hasBillingEntitlement) {
 			return { allowed: true, reason: 'paid_tier' };
 		}
 
@@ -41,18 +44,22 @@ export const checkTokenLimit = query({
 	args: {
 		userId: v.string(),
 		requestedTokens: v.optional(v.number()), // Estimated tokens for this request
+		model: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const { userId, requestedTokens = 0 } = args;
+		const { userId, requestedTokens = 0, model } = args;
 
 		// Check if user has active subscription
 		const subscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
+		const entitledSubscription =
+			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
+				? subscription
+				: null;
 
-		if (subscription) {
+		if (entitledSubscription) {
 			// Paid tier: Check token credit
 			const currentCycle = await ctx.db
 				.query('billing_cycles')
@@ -61,7 +68,8 @@ export const checkTokenLimit = query({
 				.first();
 
 			const includedCredit =
-				subscription.includedTokenCredit ?? DEFAULT_INCLUDED_TOKEN_CREDIT_USD;
+				entitledSubscription.includedTokenCredit ??
+				DEFAULT_INCLUDED_TOKEN_CREDIT_USD;
 
 			if (!currentCycle) {
 				// No active cycle, allow (will be created on first usage)
@@ -71,10 +79,25 @@ export const checkTokenLimit = query({
 			const totalCost = currentCycle.tokenCost;
 			const remainingCredit = includedCredit - totalCost;
 
-			// Estimate cost for requested tokens (rough estimate in USD per 1k tokens)
-			const estimatedCost =
-				(requestedTokens / 1000) * PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD;
-			const monthlySpendCap = subscription.monthlySpendCap;
+			let estimatedCostPer1k = PAID_TIER_ESTIMATED_COST_PER_1K_TOKENS_USD;
+			if (model) {
+				const pricing = await ctx.db
+					.query('token_pricing')
+					.withIndex('model', (q) => q.eq('model', model))
+					.filter((q) => q.eq(q.field('isActive'), true))
+					.first();
+				if (pricing) {
+					const inputPer1k = pricing.pricePerTokenInput * 1000;
+					const outputPer1k = pricing.pricePerTokenOutput * 1000;
+					const thinkingPer1k =
+						(pricing.pricePerTokenThinking ?? pricing.pricePerTokenOutput) * 1000;
+					// Use the max component as a conservative estimate for preflight spend-cap checks.
+					estimatedCostPer1k = Math.max(inputPer1k, outputPer1k, thinkingPer1k);
+				}
+			}
+
+			const estimatedCost = (requestedTokens / 1000) * estimatedCostPer1k;
+			const monthlySpendCap = entitledSubscription.monthlySpendCap;
 			if (
 				monthlySpendCap !== undefined &&
 				totalCost + estimatedCost > monthlySpendCap
@@ -137,10 +160,13 @@ export const getUsageStats = query({
 		const subscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
+		const entitledSubscription =
+			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
+				? subscription
+				: null;
 
-		if (subscription) {
+		if (entitledSubscription) {
 			// Paid tier stats
 			const currentCycle = await ctx.db
 				.query('billing_cycles')
@@ -153,17 +179,17 @@ export const getUsageStats = query({
 					tier: 'paid',
 					tokensUsed: 0,
 					tokenCost: 0,
-					remainingCredit:
-						subscription.includedTokenCredit ??
-						DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
-					includedCredit:
-						subscription.includedTokenCredit ??
-						DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
-					overageAmount: 0,
-					monthlySpendCap: subscription.monthlySpendCap,
-					periodStart: subscription.currentPeriodStart,
-					periodEnd: subscription.currentPeriodEnd,
-				};
+						remainingCredit:
+							entitledSubscription.includedTokenCredit ??
+							DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
+						includedCredit:
+							entitledSubscription.includedTokenCredit ??
+							DEFAULT_INCLUDED_TOKEN_CREDIT_USD,
+						overageAmount: 0,
+						monthlySpendCap: entitledSubscription.monthlySpendCap,
+						periodStart: entitledSubscription.currentPeriodStart,
+						periodEnd: entitledSubscription.currentPeriodEnd,
+					};
 			}
 
 			const overageAmount = Math.max(
@@ -181,7 +207,7 @@ export const getUsageStats = query({
 					),
 					includedCredit: currentCycle.includedCredit,
 				overageAmount,
-				monthlySpendCap: subscription.monthlySpendCap,
+				monthlySpendCap: entitledSubscription.monthlySpendCap,
 				periodStart: currentCycle.periodStart,
 				periodEnd: currentCycle.periodEnd,
 			};
@@ -225,9 +251,9 @@ export const isFreeTier = query({
 		const subscription = await ctx.db
 			.query('subscriptions')
 			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.filter((q) => q.eq(q.field('status'), 'active'))
 			.first();
-
-		return !subscription;
+		return !(
+			subscription && isBillingEntitledSubscriptionStatus(subscription.status)
+		);
 	},
 });

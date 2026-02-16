@@ -190,6 +190,9 @@ export default defineSchema({
     context: v.optional(v.string()),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
+    notificationAttempts: v.optional(v.number()),
+    notifiedAt: v.optional(v.number()),
+    lastNotificationError: v.optional(v.string()),
   })
     .index('source', ['source'])
     .index('severity', ['severity'])

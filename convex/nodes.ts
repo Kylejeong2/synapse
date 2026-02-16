@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
 import { FREE_TIER_MAX_TOKENS } from './pricing'
+import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus'
 
 // Create a new node
 export const create = mutation({
@@ -35,10 +36,12 @@ export const create = mutation({
       const subscription = await ctx.db
         .query('subscriptions')
         .withIndex('userId', (q) => q.eq('userId', conversation.userId))
-        .filter((q) => q.eq(q.field('status'), 'active'))
         .first()
+      const hasBillingEntitlement = Boolean(
+        subscription && isBillingEntitledSubscriptionStatus(subscription.status),
+      )
 
-      if (!subscription && conversation.isFreeTier) {
+      if (!hasBillingEntitlement && conversation.isFreeTier) {
         // Free tier: Check total token usage
         const freeTierUsage = await ctx.db
           .query('free_tier_usage')
