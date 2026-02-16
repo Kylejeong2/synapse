@@ -1,10 +1,7 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
-interface CallToActionProps {
-	onSignIn: () => void;
-}
-
-export function CallToAction({ onSignIn }: CallToActionProps) {
+export function CallToAction() {
 	return (
 		<section className="py-28 sm:py-36 landing-section">
 			<div className="max-w-3xl mx-auto text-center">
@@ -15,14 +12,13 @@ export function CallToAction({ onSignIn }: CallToActionProps) {
 					Start forking your AI conversations. Free to use, no credit card
 					required.
 				</p>
-				<button
-					type="button"
-					className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)]"
-					onClick={onSignIn}
+				<Link
+					to="/sign-in"
+					className="inline-flex items-center w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)]"
 				>
 					Get Started Free
 					<ArrowRight className="inline-block ml-2 h-5 w-5" />
-				</button>
+				</Link>
 			</div>
 		</section>
 	);

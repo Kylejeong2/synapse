@@ -1,14 +1,11 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProductMockup } from "./ProductMockup";
 
 const providers = ["Anthropic", "OpenAI", "Google"];
 
-interface HeroProps {
-	onSignIn: () => void;
-}
-
-export function Hero({ onSignIn }: HeroProps) {
+export function Hero() {
 	const [index, setIndex] = useState(0);
 	const [fading, setFading] = useState(false);
 
@@ -40,14 +37,13 @@ export function Hero({ onSignIn }: HeroProps) {
 					</p>
 
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-						<button
-							type="button"
-							className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)]"
-							onClick={onSignIn}
+						<Link
+							to="/sign-in"
+							className="w-full sm:w-auto h-14 px-10 text-lg font-medium bg-[var(--landing-dark-bg)] text-[var(--landing-text-on-dark)] rounded-md hover:bg-[var(--landing-dark-surface)] flex items-center justify-center"
 						>
 							Start for Free
 							<ArrowRight className="inline-block ml-2 h-5 w-5" />
-						</button>
+						</Link>
 						<button
 							type="button"
 							className="w-full sm:w-auto h-14 px-10 text-lg font-medium text-[var(--landing-text)] border border-[var(--landing-border)] rounded-md hover:bg-[var(--landing-surface)]"
