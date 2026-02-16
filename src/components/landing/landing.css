@@ -24,8 +24,10 @@
 
 	--landing-accent: #c4642a;
 
-	font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
+	font-family:
+		"Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-feature-settings: "cv01", "cv02", "cv03", "cv04";
 }
 
 .dark .landing {
