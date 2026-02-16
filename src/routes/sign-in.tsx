@@ -1,9 +1,10 @@
 import { SignIn } from "@clerk/clerk-react";
-import type { Appearance } from "@clerk/types";
-import { Link } from "@tanstack/react-router";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, GitBranch } from "lucide-react";
+import type { ComponentProps } from "react";
 import "@/components/landing/landing.css";
+import { useTheme } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
 	Card,
 	CardContent,
@@ -11,14 +12,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { useTheme } from "@/components/theme-provider";
 
 export const Route = createFileRoute("/sign-in")({
 	component: SignInPage,
 });
 
-const darkAppearance: Appearance = {
+type ClerkAppearance = ComponentProps<typeof SignIn>["appearance"];
+
+const darkAppearance: ClerkAppearance = {
 	variables: {
 		colorBackground: "#2a2623",
 		colorInputBackground: "#332e2b",
@@ -46,7 +47,7 @@ const darkAppearance: Appearance = {
 	},
 };
 
-const lightAppearance: Appearance = {
+const lightAppearance: ClerkAppearance = {
 	variables: {
 		colorBackground: "#faf8f3",
 		colorInputBackground: "#ffffff",
