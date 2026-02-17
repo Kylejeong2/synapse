@@ -30,7 +30,7 @@ import { log } from "@/lib/logger";
 export function AppSidebar() {
 	const { user } = useUser();
 	const navigate = useNavigate();
-	const conversations = useConversations(user?.id);
+	const conversations = useConversations();
 	const createConversation = useCreateConversation();
 	const [isCreating, setIsCreating] = useState(false);
 
