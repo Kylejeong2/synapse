@@ -377,16 +377,35 @@ export const Route = createFileRoute("/api/chat")({
 									toolResults,
 								});
 
-								// Record usage
-								await convexClient.mutation(api.usage.recordUsage, {
-									conversationId: conversationId as Id<"conversations">,
-									nodeId: newNodeId as Id<"nodes">,
-									model: modelId,
-									tokensUsed: tokenData.total,
-									inputTokens: tokenData.prompt,
-									outputTokens: tokenData.completion,
-									thinkingTokens: tokenData.thinking || 0,
-								});
+								// Record usage. If this fails, enqueue for durable retry.
+								try {
+									await convexClient.mutation(api.usage.recordUsage, {
+										conversationId: conversationId as Id<"conversations">,
+										nodeId: newNodeId as Id<"nodes">,
+										model: modelId,
+										tokensUsed: tokenData.total,
+										inputTokens: tokenData.prompt,
+										outputTokens: tokenData.completion,
+										thinkingTokens: tokenData.thinking || 0,
+									});
+								} catch (usageError) {
+									await convexClient.mutation(
+										api.usage.enqueueUsageMeteringJob,
+										{
+											conversationId: conversationId as Id<"conversations">,
+											nodeId: newNodeId as Id<"nodes">,
+											model: modelId,
+											tokensUsed: tokenData.total,
+											inputTokens: tokenData.prompt,
+											outputTokens: tokenData.completion,
+											thinkingTokens: tokenData.thinking || 0,
+											failureReason:
+												usageError instanceof Error
+													? usageError.message
+													: String(usageError),
+										},
+									);
+								}
 
 								// Update last accessed time
 								await convexClient.mutation(

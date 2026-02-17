@@ -11,6 +11,7 @@
     "check": "biome check",
     "test:stripe": "vitest run tests/stripe*.test.ts tests/apiCreateCheckoutRoute*.test.ts tests/apiStripeWebhook*.test.ts tests/apiBillingManagementRoutes.test.ts tests/billingFlow.integration.test.ts",
     "test:stripe:live": "RUN_STRIPE_LIVE_TESTS=1 STRIPE_ALLOW_NETWORK_TESTS=1 vitest run tests/stripeLive.integration.test.ts",
+    "billing:check-env": "node scripts/validate-billing-env.mjs",
     "test:watch": "vitest",
     "prepare": "husky",
     "pre-commit": "lint-staged",

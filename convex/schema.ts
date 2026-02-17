@@ -96,7 +96,8 @@ export default defineSchema({
     .index('userId', ['userId'])
     .index('conversationId', ['conversationId'])
     .index('timestamp', ['timestamp'])
-    .index('billingCycleId', ['billingCycleId']),
+    .index('billingCycleId', ['billingCycleId'])
+    .index('nodeId', ['nodeId']),
 
   billing_cycles: defineTable({
     userId: v.string(), // Clerk user ID
@@ -116,8 +117,37 @@ export default defineSchema({
   })
     .index('userId', ['userId'])
     .index('subscriptionId', ['subscriptionId'])
+    .index('subscriptionPeriod', ['subscriptionId', 'periodStart', 'periodEnd'])
     .index('periodStart', ['periodStart'])
     .index('periodEnd', ['periodEnd']),
+
+  usage_metering_jobs: defineTable({
+    userId: v.string(),
+    conversationId: v.id('conversations'),
+    nodeId: v.id('nodes'),
+    model: v.string(),
+    tokensUsed: v.number(),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    thinkingTokens: v.optional(v.number()),
+    tokenCost: v.optional(v.number()),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('processing'),
+      v.literal('failed'),
+      v.literal('succeeded'),
+      v.literal('dead_letter'),
+    ),
+    attempts: v.number(),
+    nextRetryAt: v.number(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    processedAt: v.optional(v.number()),
+  })
+    .index('status', ['status'])
+    .index('nodeId', ['nodeId'])
+    .index('nextRetryAt', ['nextRetryAt']),
 
   free_tier_usage: defineTable({
     userId: v.string(), // Clerk user ID

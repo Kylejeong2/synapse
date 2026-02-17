@@ -234,14 +234,16 @@ synapse/
 | `OPENAI_API_KEY` | Yes | OpenAI API key for AI model access |
 | `CLERK_SECRET_KEY` | Yes | Clerk secret key for server-side auth verification |
 | `CLERK_JWT_ISSUER_DOMAIN` | Yes (for Convex auth) | Clerk issuer domain used by `convex/auth.config.ts` |
-| `SERVER_URL` | No | Custom server URL (for production) |
+| `SERVER_URL` | Yes (for production billing) | Canonical app URL used for Stripe return/success URLs |
 | `MODEL_NAME` | No | Override default model selection |
 | `STRIPE_SECRET_KEY` | Yes (for billing) | Stripe secret key used for checkout, invoices, and webhooks |
 | `STRIPE_PRICE_ID_SUBSCRIPTION` | Yes (for billing) | Stripe recurring price ID for the Pro subscription |
 | `STRIPE_WEBHOOK_SECRET` | Yes (for billing) | Stripe webhook signing secret for `/api/stripe-webhook` verification |
+| `STRIPE_WEBHOOK_CONVEX_TOKEN` | Yes (for billing) | Shared secret used by server routes to invoke guarded Convex webhook processing |
 | `STRIPE_WEBHOOK_REPLAY_TOKEN` | Yes (for billing ops) | Shared secret for manual webhook replay endpoint `/api/stripe-webhook/replay` |
 | `STRIPE_WEBHOOK_REPLAY_ALLOWED_IPS` | No (recommended for billing ops) | Comma-separated IP allowlist for `/api/stripe-webhook/replay` |
 | `BILLING_ALERT_WEBHOOK_URL` | No (recommended for billing ops) | Incident webhook URL for warning/error records from `billing_alerts` |
+| `BILLING_ADMIN_USER_IDS` | Yes (for billing admin ops) | Comma-separated Clerk user IDs allowed to mutate `token_pricing` via admin mutations |
 
 ### Client-Side Variables (prefixed with `VITE_`)
 
@@ -285,6 +287,10 @@ These are automatically detected by the AI SDK when using corresponding models:
      - `invoice.finalized`
      - `invoice.paid`
      - `invoice.payment_failed`
+     - `charge.refunded`
+     - `charge.dispute.created`
+     - `credit_note.created`
+     - `credit_note.updated`
 3. Copy webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
 
 ### Pre-Deploy Validation
@@ -295,17 +301,22 @@ These are automatically detected by the AI SDK when using corresponding models:
    - `pnpm check`
    - `pnpm typecheck`
    - `pnpm test`
+   - `pnpm billing:check-env`
    - confirm Clerk `convex` JWT template exists and `CLERK_JWT_ISSUER_DOMAIN` matches issuer
 3. Verify webhook delivery health in Stripe dashboard.
 4. Verify failed webhook queue is empty via `stripe_webhook_failures` table.
 5. Verify `token_pricing` contains active rows for each production model.
+   - bootstrap all defaults with: `tokenPricing.seedDefaultModelPricing`
+   - then adjust with: `tokenPricing.upsertModelPricing` / `tokenPricing.bulkUpsertModelPricing`
 6. Verify there are no stuck `pending` rows in `billing_cycles` (reconciliation cron should clear them).
+7. Verify there are no stale `failed` / `dead_letter` rows in `usage_metering_jobs`.
 
 ### Incident Recovery
 
 1. Inspect `stripe_webhook_failures` and `billing_alerts` tables.
 2. Confirm automatic retry job is healthy:
    - Cron: `retry failed stripe webhooks` (every 10 minutes)
+   - Cron: `process pending usage metering jobs` (every 5 minutes)
 3. Replay failed event manually when needed:
    - call `POST /api/stripe-webhook/replay` with:
      - header `x-webhook-replay-token: <STRIPE_WEBHOOK_REPLAY_TOKEN>`

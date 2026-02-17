@@ -20,13 +20,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../convex/_generated/api', () => ({
 	api: {
 		stripeWebhooks: {
-			beginWebhookEventProcessing: 'stripeWebhooks:beginWebhookEventProcessing',
-			markWebhookEventProcessed: 'stripeWebhooks:markWebhookEventProcessed',
-			markWebhookEventFailed: 'stripeWebhooks:markWebhookEventFailed',
-			upsertSubscriptionFromStripe: 'stripeWebhooks:upsertSubscriptionFromStripe',
-			updateSubscriptionByStripeIds: 'stripeWebhooks:updateSubscriptionByStripeIds',
-			getUserIdByStripeCustomerId: 'stripeWebhooks:getUserIdByStripeCustomerId',
-			logBillingAlert: 'stripeWebhooks:logBillingAlert',
+			processWebhookEvent: 'stripeWebhooks:processWebhookEvent',
 		},
 	},
 }));
@@ -50,6 +44,7 @@ async function getPostHandler() {
 	};
 	process.env.STRIPE_SECRET_KEY = 'sk_test_123';
 	process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123';
+	process.env.STRIPE_WEBHOOK_CONVEX_TOKEN = 'convex_webhook_token';
 	const mod = await import('../src/routes/api.stripe-webhook');
 	return (mod.Route as any).server.handlers.POST as (args: {
 		request: Request;
@@ -85,7 +80,7 @@ describe('POST /api/stripe-webhook', () => {
 			created: 1,
 			data: { object: {} },
 		});
-		mutationMock.mockResolvedValueOnce({ proceed: false, state: 'processed' });
+		mutationMock.mockResolvedValueOnce({ duplicate: true });
 
 		const post = await getPostHandler();
 		const response = await post({
@@ -102,12 +97,15 @@ describe('POST /api/stripe-webhook', () => {
 			duplicate: true,
 		});
 		expect(mutationMock).toHaveBeenCalledWith(
-			'stripeWebhooks:beginWebhookEventProcessing',
-			expect.objectContaining({ eventId: 'evt_1' }),
+			'stripeWebhooks:processWebhookEvent',
+			expect.objectContaining({
+				token: 'convex_webhook_token',
+				event: expect.objectContaining({ id: 'evt_1' }),
+			}),
 		);
 	});
 
-	it('processes invoice.payment_failed and marks event processed', async () => {
+	it('processes invoice.payment_failed via convex webhook processor mutation', async () => {
 		constructEventMock.mockReturnValue({
 			id: 'evt_2',
 			type: 'invoice.payment_failed',
@@ -119,10 +117,7 @@ describe('POST /api/stripe-webhook', () => {
 				},
 			},
 		});
-		mutationMock
-			.mockResolvedValueOnce({ proceed: true, state: 'new' })
-			.mockResolvedValueOnce({ updated: true })
-			.mockResolvedValueOnce({ success: true });
+		mutationMock.mockResolvedValueOnce({ duplicate: false });
 
 		const post = await getPostHandler();
 		const response = await post({
@@ -135,16 +130,11 @@ describe('POST /api/stripe-webhook', () => {
 
 		expect(response.status).toBe(200);
 		expect(mutationMock).toHaveBeenCalledWith(
-			'stripeWebhooks:updateSubscriptionByStripeIds',
+			'stripeWebhooks:processWebhookEvent',
 			expect.objectContaining({
-				stripeSubscriptionId: 'sub_test',
-				status: 'past_due',
-				lastInvoicePaymentStatus: 'failed',
+				token: 'convex_webhook_token',
+				event: expect.objectContaining({ id: 'evt_2' }),
 			}),
-		);
-		expect(mutationMock).toHaveBeenCalledWith(
-			'stripeWebhooks:markWebhookEventProcessed',
-			{ eventId: 'evt_2' },
 		);
 	});
 });

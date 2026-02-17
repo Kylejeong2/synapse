@@ -19,13 +19,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../convex/_generated/api', () => ({
 	api: {
 		stripeWebhooks: {
-			beginWebhookEventProcessing: 'stripeWebhooks:beginWebhookEventProcessing',
-			markWebhookEventProcessed: 'stripeWebhooks:markWebhookEventProcessed',
-			markWebhookEventFailed: 'stripeWebhooks:markWebhookEventFailed',
-			updateSubscriptionByStripeIds: 'stripeWebhooks:updateSubscriptionByStripeIds',
-			upsertSubscriptionFromStripe: 'stripeWebhooks:upsertSubscriptionFromStripe',
-			getUserIdByStripeCustomerId: 'stripeWebhooks:getUserIdByStripeCustomerId',
-			logBillingAlert: 'stripeWebhooks:logBillingAlert',
+			processWebhookEvent: 'stripeWebhooks:processWebhookEvent',
 		},
 	},
 }));
@@ -49,6 +43,7 @@ async function getReplayHandler() {
 	};
 	process.env.STRIPE_SECRET_KEY = 'sk_test_123';
 	process.env.STRIPE_WEBHOOK_REPLAY_TOKEN = 'replay_secret';
+	process.env.STRIPE_WEBHOOK_CONVEX_TOKEN = 'convex_webhook_token';
 	const mod = await import('../src/routes/api.stripe-webhook.replay');
 	return (mod.Route as any).server.handlers.POST as (args: {
 		request: Request;
@@ -80,10 +75,7 @@ describe('POST /api/stripe-webhook/replay', () => {
 			created: 1,
 			data: { object: { subscription: 'sub_1', customer: 'cus_1' } },
 		});
-		mutationMock
-			.mockResolvedValueOnce({ proceed: true, state: 'new' })
-			.mockResolvedValueOnce({ updated: true })
-			.mockResolvedValueOnce({ success: true });
+		mutationMock.mockResolvedValueOnce({ duplicate: false });
 
 		const post = await getReplayHandler();
 		const response = await post({
@@ -102,6 +94,13 @@ describe('POST /api/stripe-webhook/replay', () => {
 			replayed: true,
 			duplicate: false,
 		});
+		expect(mutationMock).toHaveBeenCalledWith(
+			'stripeWebhooks:processWebhookEvent',
+			expect.objectContaining({
+				token: 'convex_webhook_token',
+				event: expect.objectContaining({ id: 'evt_2' }),
+			}),
+		);
 	});
 
 	it('returns 403 when replay IP allowlist is configured and request IP is not allowed', async () => {

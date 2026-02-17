@@ -5,14 +5,21 @@ vi.mock('../convex/_generated/server', () => ({
 	query: (opts: { handler: Function }) => opts,
 	internalMutation: (opts: { handler: Function }) => opts,
 	internalQuery: (opts: { handler: Function }) => opts,
+	internalAction: (opts: { handler: Function }) => opts,
 }));
 
 function makeQuery(firstValue: unknown) {
 	return {
 		withIndex: () => ({
 			first: vi.fn(async () => firstValue),
+			collect: vi.fn(async () =>
+				Array.isArray(firstValue) ? firstValue : firstValue ? [firstValue] : [],
+			),
 			filter: () => ({
 				first: vi.fn(async () => firstValue),
+				collect: vi.fn(async () =>
+					Array.isArray(firstValue) ? firstValue : firstValue ? [firstValue] : [],
+				),
 			}),
 		}),
 	};
@@ -45,6 +52,7 @@ describe('usage.recordUsage pricing behavior', () => {
 		const patch = vi.fn(async () => undefined);
 		const query = vi
 			.fn()
+			.mockImplementationOnce(() => makeQuery(null))
 			.mockImplementationOnce(() => makeQuery(pricing))
 			.mockImplementationOnce(() => makeQuery(subscription))
 			.mockImplementationOnce(() => makeQuery(null));
@@ -88,6 +96,7 @@ describe('usage.recordUsage pricing behavior', () => {
 			.fn()
 			.mockImplementationOnce(() => makeQuery(null))
 			.mockImplementationOnce(() => makeQuery(null))
+			.mockImplementationOnce(() => makeQuery(null))
 			.mockImplementationOnce(() => makeQuery(null));
 		const get = vi
 			.fn()
@@ -114,5 +123,39 @@ describe('usage.recordUsage pricing behavior', () => {
 			'usage_records',
 			expect.objectContaining({ tokenCost: 0.25 }),
 		);
+	});
+
+	it('is idempotent per node and does not double-charge usage', async () => {
+		const insert = vi.fn(async () => 'usage_2');
+		const patch = vi.fn(async () => undefined);
+		const query = vi
+			.fn()
+			.mockImplementationOnce(() =>
+				makeQuery({
+					_id: 'usage_existing',
+					nodeId: 'node_1',
+				}),
+			);
+		const get = vi
+			.fn()
+			.mockResolvedValueOnce({ _id: 'conv_1', userId: 'user_1' })
+			.mockResolvedValueOnce({ _id: 'node_1', conversationId: 'conv_1' });
+		const db = { query, insert, patch, get };
+
+		const { recordUsage } = await import('../convex/usage');
+		const result = await (recordUsage as any).handler(
+			{ db, auth: { getUserIdentity: vi.fn(async () => ({ subject: 'user_1' })) } },
+			{
+				conversationId: 'conv_1',
+				nodeId: 'node_1',
+				model: 'gpt-5.2-2025-12-11',
+				tokensUsed: 1000,
+				tokenCost: 1,
+			},
+		);
+
+		expect(result).toEqual({ success: true, duplicate: true });
+		expect(insert).not.toHaveBeenCalled();
+		expect(patch).not.toHaveBeenCalled();
 	});
 });

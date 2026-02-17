@@ -72,7 +72,7 @@ export const create = mutation({
         subscription && isBillingEntitledSubscriptionStatus(subscription.status),
       )
 
-      if (!hasBillingEntitlement && conversation.isFreeTier) {
+      if (!hasBillingEntitlement) {
         // Free tier: Check total token usage
         const freeTierUsage = await ctx.db
           .query('free_tier_usage')

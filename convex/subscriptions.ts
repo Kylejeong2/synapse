@@ -8,7 +8,12 @@ import { requireAuthenticatedUserId } from './auth';
 let validatedPriceId: string | null = null;
 
 function getServerUrl(): string {
-	return process.env.SERVER_URL || 'http://localhost:3000';
+	const configured = process.env.SERVER_URL;
+	if (configured) return configured;
+	if (process.env.NODE_ENV === 'production') {
+		throw new Error('SERVER_URL environment variable is required in production');
+	}
+	return 'http://localhost:3000';
 }
 
 async function assertStripeSubscriptionPriceMatchesCatalog(): Promise<void> {

@@ -29,4 +29,11 @@ crons.interval(
 	{ limit: 25 },
 );
 
+crons.interval(
+	'process pending usage metering jobs',
+	{ minutes: 5 },
+	(internal as any).usage.processPendingUsageMeteringJobs,
+	{ limit: 50 },
+);
+
 export default crons;

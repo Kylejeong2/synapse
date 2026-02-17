@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../convex/_generated/server', () => ({
 	mutation: (opts: { handler: Function }) => opts,
 	query: (opts: { handler: Function }) => opts,
+	internalMutation: (opts: { handler: Function }) => opts,
+	internalQuery: (opts: { handler: Function }) => opts,
 	internalAction: (opts: { handler: Function }) => opts,
 }));
 
@@ -22,6 +24,21 @@ function q(firstValue: unknown) {
 describe('convex/stripeWebhooks', () => {
 	beforeEach(() => {
 		vi.resetModules();
+	});
+
+	it('processWebhookEvent rejects invalid internal token', async () => {
+		process.env.STRIPE_WEBHOOK_CONVEX_TOKEN = 'expected_token';
+		const { processWebhookEvent } = await import('../convex/stripeWebhooks');
+
+		await expect(
+			(processWebhookEvent as any).handler(
+				{ runMutation: vi.fn(), runQuery: vi.fn() },
+				{
+					token: 'bad_token',
+					event: { id: 'evt_unauth', type: 'invoice.paid', created: 1, data: { object: {} } },
+				},
+			),
+		).rejects.toThrow('Unauthorized');
 	});
 
 	it('beginWebhookEventProcessing inserts new processing event', async () => {
@@ -124,6 +141,96 @@ describe('convex/stripeWebhooks', () => {
 				stripeSubscriptionId: 'sub_1',
 				status: 'active',
 			}),
+		);
+	});
+
+	it('processWebhookEvent logs alerts for refund/dispute/credit note events', async () => {
+		process.env.STRIPE_WEBHOOK_CONVEX_TOKEN = 'expected_token';
+		const runMutation = vi.fn(async (_ref: unknown, payload: any) => {
+			if (payload?.eventId && payload?.type && payload?.createdAt) {
+				return { proceed: true, state: 'new' };
+			}
+			if (payload?.eventId && Object.keys(payload).length === 1) {
+				return { success: true };
+			}
+			return { success: true };
+		});
+		const runQuery = vi.fn(async () => null);
+
+		const { processWebhookEvent } = await import('../convex/stripeWebhooks');
+
+		await (processWebhookEvent as any).handler(
+			{ runMutation, runQuery },
+			{
+				token: 'expected_token',
+				event: {
+					id: 'evt_refund',
+					type: 'charge.refunded',
+					created: 1,
+					data: {
+						object: {
+							id: 'ch_1',
+							amount_refunded: 500,
+							currency: 'usd',
+							customer: 'cus_1',
+						},
+					},
+				},
+			},
+		);
+
+		await (processWebhookEvent as any).handler(
+			{ runMutation, runQuery },
+			{
+				token: 'expected_token',
+				event: {
+					id: 'evt_dispute',
+					type: 'charge.dispute.created',
+					created: 2,
+					data: {
+						object: {
+							id: 'dp_1',
+							charge: 'ch_2',
+							amount: 700,
+							currency: 'usd',
+							reason: 'fraudulent',
+						},
+					},
+				},
+			},
+		);
+
+		await (processWebhookEvent as any).handler(
+			{ runMutation, runQuery },
+			{
+				token: 'expected_token',
+				event: {
+					id: 'evt_credit_note',
+					type: 'credit_note.created',
+					created: 3,
+					data: {
+						object: {
+							id: 'cn_1',
+							invoice: 'in_1',
+							amount: 300,
+							currency: 'usd',
+						},
+					},
+				},
+			},
+		);
+
+		expect(runMutation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ message: 'Charge refunded' }),
+		);
+		expect(runMutation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ message: 'Charge dispute created' }),
+		);
+		expect(runMutation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ message: 'Credit note created' }),
 		);
 	});
 });

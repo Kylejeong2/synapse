@@ -10,13 +10,15 @@ vi.mock('../convex/stripe', () => ({
 }));
 
 vi.mock('../convex/_generated/server', () => ({
+	internalMutation: (opts: { handler: Function }) => opts,
+	internalQuery: (opts: { handler: Function }) => opts,
+	internalAction: (opts: { handler: Function }) => opts,
 	mutation: (opts: { handler: Function }) => opts,
 	query: (opts: { handler: Function }) => opts,
-	internalAction: (opts: { handler: Function }) => opts,
 }));
 
 vi.mock('../convex/_generated/api', () => ({
-	api: {
+	internal: {
 		stripeWebhooks: {
 			listFailedWebhookEvents: 'stripeWebhooks:listFailedWebhookEvents',
 			beginWebhookEventProcessing: 'stripeWebhooks:beginWebhookEventProcessing',
