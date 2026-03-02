@@ -89,7 +89,7 @@ async function getOrCreateCurrentBillingCycle(
 		subscription: any;
 	},
 ) {
-	const matches = await ctx.db
+	const existing = await ctx.db
 		.query('billing_cycles')
 		.withIndex('subscriptionPeriod', (q: any) =>
 			q
@@ -98,82 +98,35 @@ async function getOrCreateCurrentBillingCycle(
 				.eq('periodEnd', args.subscription.currentPeriodEnd),
 		)
 		.filter((q: any) => q.eq(q.field('status'), 'active'))
-		.collect();
+		.first();
 
-	if (matches.length === 0) {
-		const billingCycleId = await ctx.db.insert('billing_cycles', {
-			userId: args.userId,
-			subscriptionId: args.subscription._id,
-			periodStart: args.subscription.currentPeriodStart,
-			periodEnd: args.subscription.currentPeriodEnd,
-			tokensUsed: 0,
-			tokenCost: 0,
-			includedCredit: args.subscription.includedTokenCredit,
-			overageAmount: 0,
-			status: 'active',
-		});
-		const inserted = await ctx.db.get(billingCycleId);
-		if (inserted) return inserted;
-		return {
-			_id: billingCycleId,
-			userId: args.userId,
-			subscriptionId: args.subscription._id,
-			periodStart: args.subscription.currentPeriodStart,
-			periodEnd: args.subscription.currentPeriodEnd,
-			tokensUsed: 0,
-			tokenCost: 0,
-			includedCredit: args.subscription.includedTokenCredit,
-			overageAmount: 0,
-			status: 'active',
-		};
-	}
+	if (existing) return existing;
 
-	const sorted = [...matches].sort(
-		(a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0),
-	);
-	const canonical = sorted[0];
-	const duplicates = sorted.slice(1);
-
-	if (duplicates.length > 0) {
-		let mergedTokens = 0;
-		let mergedCost = 0;
-		for (const cycle of sorted) {
-			mergedTokens += cycle.tokensUsed;
-			mergedCost += cycle.tokenCost;
-		}
-
-		await ctx.db.patch(canonical._id, {
-			tokensUsed: mergedTokens,
-			tokenCost: mergedCost,
-			overageAmount: Math.max(0, mergedCost - canonical.includedCredit),
-		});
-
-		for (const duplicate of duplicates) {
-			const duplicateRecords = await ctx.db
-				.query('usage_records')
-				.withIndex('billingCycleId', (q: any) =>
-					q.eq('billingCycleId', duplicate._id),
-				)
-				.collect();
-			for (const record of duplicateRecords) {
-				await ctx.db.patch(record._id, {
-					billingCycleId: canonical._id,
-				});
-			}
-			await ctx.db.patch(duplicate._id, {
-				status: 'completed',
-			});
-		}
-
-		return {
-			...canonical,
-			tokensUsed: mergedTokens,
-			tokenCost: mergedCost,
-			overageAmount: Math.max(0, mergedCost - canonical.includedCredit),
-		};
-	}
-
-	return canonical;
+	const billingCycleId = await ctx.db.insert('billing_cycles', {
+		userId: args.userId,
+		subscriptionId: args.subscription._id,
+		periodStart: args.subscription.currentPeriodStart,
+		periodEnd: args.subscription.currentPeriodEnd,
+		tokensUsed: 0,
+		tokenCost: 0,
+		includedCredit: args.subscription.includedTokenCredit,
+		overageAmount: 0,
+		status: 'active',
+	});
+	const inserted = await ctx.db.get(billingCycleId);
+	if (inserted) return inserted;
+	return {
+		_id: billingCycleId,
+		userId: args.userId,
+		subscriptionId: args.subscription._id,
+		periodStart: args.subscription.currentPeriodStart,
+		periodEnd: args.subscription.currentPeriodEnd,
+		tokensUsed: 0,
+		tokenCost: 0,
+		includedCredit: args.subscription.includedTokenCredit,
+		overageAmount: 0,
+		status: 'active',
+	};
 }
 
 async function recordUsageForUser(
@@ -423,21 +376,24 @@ export const processPendingUsageMeteringJobs = internalAction({
 	}> => {
 		const limit = args.limit ?? 25;
 		const now = Date.now();
+		const pendingLimit = Math.ceil(limit / 2);
+		const failedLimit = Math.max(0, limit - pendingLimit);
 		const [pending, failed]: Array<any[]> = await Promise.all([
-			ctx.runQuery(internal.usage.listUsageMeteringJobsByStatus, {
+			ctx.runQuery(internal.usage.listDueUsageMeteringJobsByStatus, {
 				status: 'pending',
-				limit,
+				now,
+				limit: pendingLimit,
 			}),
-			ctx.runQuery(internal.usage.listUsageMeteringJobsByStatus, {
-				status: 'failed',
-				limit,
-			}),
+			failedLimit > 0
+				? ctx.runQuery(internal.usage.listDueUsageMeteringJobsByStatus, {
+						status: 'failed',
+						now,
+						limit: failedLimit,
+					})
+				: Promise.resolve([]),
 		]);
 
-		const candidates: any[] = [...pending, ...failed]
-			.filter((job) => job.nextRetryAt <= now)
-			.sort((a, b) => a.nextRetryAt - b.nextRetryAt)
-			.slice(0, limit);
+		const candidates: any[] = [...pending, ...failed].slice(0, limit);
 
 		let succeeded = 0;
 		let failedCount = 0;
@@ -460,15 +416,18 @@ export const processPendingUsageMeteringJobs = internalAction({
 	},
 });
 
-export const listUsageMeteringJobsByStatus = internalQuery({
+export const listDueUsageMeteringJobsByStatus = internalQuery({
 	args: {
 		status: v.union(v.literal('pending'), v.literal('failed')),
+		now: v.number(),
 		limit: v.number(),
 	},
 	handler: async (ctx, args) => {
 		return await ctx.db
 			.query('usage_metering_jobs')
-			.withIndex('status', (q) => q.eq('status', args.status))
+			.withIndex('statusNextRetry', (q) =>
+				q.eq('status', args.status).lte('nextRetryAt', args.now),
+			)
 			.take(args.limit);
 	},
 });
@@ -673,6 +632,83 @@ export const getConversationTokenTotal = query({
 });
 
 /**
+ * Maintenance reconciliation for duplicate active cycles keyed by
+ * (subscriptionId, periodStart, periodEnd). Keeps the oldest cycle canonical.
+ */
+export const reconcileDuplicateActiveBillingCycles = internalMutation({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = args.limit ?? 500;
+		const activeCycles = await ctx.db
+			.query('billing_cycles')
+			.withIndex('status', (q) => q.eq('status', 'active'))
+			.take(limit);
+
+		const groups = new Map<string, any[]>();
+		for (const cycle of activeCycles) {
+			const key = `${cycle.subscriptionId}:${cycle.periodStart}:${cycle.periodEnd}`;
+			const existing = groups.get(key);
+			if (existing) {
+				existing.push(cycle);
+			} else {
+				groups.set(key, [cycle]);
+			}
+		}
+
+		let groupsWithDuplicates = 0;
+		let cyclesCompleted = 0;
+		let recordsReassigned = 0;
+
+		for (const group of groups.values()) {
+			if (group.length <= 1) continue;
+			groupsWithDuplicates++;
+
+			const sorted = [...group].sort(
+				(a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0),
+			);
+			const canonical = sorted[0];
+			const duplicates = sorted.slice(1);
+			const mergedTokens = sorted.reduce((sum, cycle) => sum + cycle.tokensUsed, 0);
+			const mergedCost = sorted.reduce((sum, cycle) => sum + cycle.tokenCost, 0);
+
+			await ctx.db.patch(canonical._id, {
+				tokensUsed: mergedTokens,
+				tokenCost: mergedCost,
+				overageAmount: Math.max(0, mergedCost - canonical.includedCredit),
+			});
+
+			for (const duplicate of duplicates) {
+				const duplicateRecords = await ctx.db
+					.query('usage_records')
+					.withIndex('billingCycleId', (q: any) =>
+						q.eq('billingCycleId', duplicate._id),
+					)
+					.collect();
+				for (const record of duplicateRecords) {
+					await ctx.db.patch(record._id, {
+						billingCycleId: canonical._id,
+					});
+					recordsReassigned++;
+				}
+				await ctx.db.patch(duplicate._id, {
+					status: 'completed',
+				});
+				cyclesCompleted++;
+			}
+		}
+
+		return {
+			scanned: activeCycles.length,
+			groupsWithDuplicates,
+			cyclesCompleted,
+			recordsReassigned,
+		};
+	},
+});
+
+/**
  * Find all active billing cycles that have expired (periodEnd < now).
  * Joins with subscriptions to include the stripeCustomerId for Stripe API calls.
  * Used by the overage billing cron job.
@@ -682,7 +718,7 @@ export const getExpiredActiveCycles = internalQuery({
 		const now = Date.now();
 		const activeCycles = await ctx.db
 			.query('billing_cycles')
-			.filter((q) => q.eq(q.field('status'), 'active'))
+			.withIndex('status', (q) => q.eq('status', 'active'))
 			.collect();
 
 		const expired = [];
@@ -703,7 +739,7 @@ export const getPendingCycles = internalQuery({
 	handler: async (ctx) => {
 		const pendingCycles = await ctx.db
 			.query('billing_cycles')
-			.filter((q) => q.eq(q.field('status'), 'pending'))
+			.withIndex('status', (q) => q.eq('status', 'pending'))
 			.collect();
 
 		const result = [];

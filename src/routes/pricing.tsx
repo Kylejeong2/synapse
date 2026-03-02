@@ -2,7 +2,8 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Check, Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,12 +23,17 @@ import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/pricing")({
 	component: PricingPage,
+	validateSearch: (search: Record<string, unknown>) => ({
+		success: search.success === "true" || search.success === true,
+		canceled: search.canceled === "true" || search.canceled === true,
+	}),
 });
 
 function PricingPage() {
 	const { user, isSignedIn } = useUser();
 	const { getToken } = useAuth();
 	const navigate = useNavigate();
+	const { success, canceled } = Route.useSearch();
 	const [isLoading, setIsLoading] = useState(false);
 	const [isManagingBilling, setIsManagingBilling] = useState(false);
 	const [spendCapInput, setSpendCapInput] = useState("");
@@ -39,6 +45,24 @@ function PricingPage() {
 		api.subscriptions.getBillingSettings,
 		user?.id ? {} : "skip",
 	);
+
+	useEffect(() => {
+		if (success) {
+			toast.success("Subscription activated! Welcome to Pro.");
+			navigate({
+				to: "/pricing",
+				search: { success: false, canceled: false },
+				replace: true,
+			});
+		} else if (canceled) {
+			toast.info("Checkout canceled. No charges were made.");
+			navigate({
+				to: "/pricing",
+				search: { success: false, canceled: false },
+				replace: true,
+			});
+		}
+	}, [success, canceled, navigate]);
 
 	const loadBillingToken = async () => {
 		const token = await getToken();
@@ -80,7 +104,7 @@ function PricingPage() {
 			}
 		} catch (error) {
 			console.error("Error creating checkout:", error);
-			alert("Failed to start checkout. Please try again.");
+			toast.error("Failed to start checkout. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -117,7 +141,7 @@ function PricingPage() {
 			throw new Error("Missing billing portal URL");
 		} catch (error) {
 			console.error("Error opening billing portal:", error);
-			alert("Failed to open billing portal. Please try again.");
+			toast.error("Failed to open billing portal. Please try again.");
 		} finally {
 			setIsManagingBilling(false);
 		}
@@ -127,12 +151,12 @@ function PricingPage() {
 		setIsManagingBilling(true);
 		try {
 			await callBillingApi("/api/subscription-cancel");
-			alert(
+			toast.success(
 				"Subscription will cancel at the end of the current billing period.",
 			);
 		} catch (error) {
 			console.error("Error canceling subscription:", error);
-			alert("Failed to update subscription cancellation.");
+			toast.error("Failed to update subscription cancellation.");
 		} finally {
 			setIsManagingBilling(false);
 		}
@@ -142,10 +166,10 @@ function PricingPage() {
 		setIsManagingBilling(true);
 		try {
 			await callBillingApi("/api/subscription-resume");
-			alert("Subscription cancellation removed.");
+			toast.success("Subscription resumed successfully.");
 		} catch (error) {
 			console.error("Error resuming subscription:", error);
-			alert("Failed to resume subscription.");
+			toast.error("Failed to resume subscription.");
 		} finally {
 			setIsManagingBilling(false);
 		}
@@ -164,10 +188,10 @@ function PricingPage() {
 				throw new Error("Spend cap must be a non-negative number.");
 			}
 			await callBillingApi("/api/subscription-spend-cap", { monthlySpendCap });
-			alert("Spend cap updated.");
+			toast.success("Spend cap updated.");
 		} catch (error) {
 			console.error("Error updating spend cap:", error);
-			alert(
+			toast.error(
 				error instanceof Error ? error.message : "Failed to update spend cap.",
 			);
 		} finally {

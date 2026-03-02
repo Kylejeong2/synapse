@@ -1,24 +1,15 @@
 import type { ConvexHttpClient } from "convex/browser";
-import type Stripe from "stripe";
 import { api } from "../../../convex/_generated/api";
-
-function getRequiredEnv(name: string): string {
-	const value = process.env[name];
-	if (!value) {
-		throw new Error(`${name} environment variable is not set`);
-	}
-	return value;
-}
+import { getRequiredEnv } from "./stripeServer";
 
 export async function handleStripeEvent(params: {
 	convexClient: ConvexHttpClient;
-	stripe: Stripe;
-	event: Stripe.Event;
+	event: { id: string; type: string; created: number };
 	payload?: string;
 }) {
 	const { convexClient, event, payload } = params;
 
-	const result = await convexClient.mutation(
+	const result = await convexClient.action(
 		api.stripeWebhooks.processWebhookEvent,
 		{
 			event,

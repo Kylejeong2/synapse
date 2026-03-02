@@ -1,13 +1,15 @@
 import { internal } from './_generated/api';
 import {
+	action,
 	internalAction,
 	internalMutation,
 	internalQuery,
-	mutation,
 } from './_generated/server';
 import { v } from 'convex/values';
 import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD } from './pricing';
 import { stripe } from './stripe';
+import { upsertBillingCustomerByUserId } from './billingCustomers';
+import { insertBillingAlert } from './billingAlertsShared';
 
 const subscriptionStatus = v.union(
 	v.literal('active'),
@@ -36,9 +38,20 @@ function getRequiredEnv(name: string): string {
 
 function assertWebhookProcessingToken(token: string) {
 	const expected = getRequiredEnv('STRIPE_WEBHOOK_CONVEX_TOKEN');
-	if (token !== expected) {
+	if (token.length !== expected.length) {
 		throw new Error('Unauthorized');
 	}
+	let mismatch = 0;
+	for (let i = 0; i < token.length; i++) {
+		mismatch |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+	}
+	if (mismatch !== 0) {
+		throw new Error('Unauthorized');
+	}
+}
+
+function shouldEmitWebhookFailureAlert(retryCount: number): boolean {
+	return retryCount === 1 || retryCount === 3 || retryCount === 10;
 }
 
 function toMillis(unixSeconds: number | null | undefined): number {
@@ -122,7 +135,7 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 				event.type === 'invoice.paid' ? 'paid' : 'failed',
 		});
 		if (event.type === 'invoice.payment_failed') {
-			await ctx.runMutation(internal.stripeWebhooks.logBillingAlert, {
+			await ctx.runMutation(internal.billing.logBillingAlert, {
 				source: 'invoice',
 				severity: 'warning',
 				message: 'Invoice payment failed',
@@ -154,7 +167,7 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 			stripeCustomerId: String(subscription.customer),
 			status: 'trialing',
 		});
-		await ctx.runMutation(internal.stripeWebhooks.logBillingAlert, {
+		await ctx.runMutation(internal.billing.logBillingAlert, {
 			source: 'invoice',
 			severity: 'info',
 			message: 'Subscription trial will end soon',
@@ -169,7 +182,7 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 
 	if (event.type === 'charge.refunded') {
 		const charge = event.data.object;
-		await ctx.runMutation(internal.stripeWebhooks.logBillingAlert, {
+		await ctx.runMutation(internal.billing.logBillingAlert, {
 			source: 'invoice',
 			severity: 'warning',
 			message: 'Charge refunded',
@@ -186,7 +199,7 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 
 	if (event.type === 'charge.dispute.created') {
 		const dispute = event.data.object;
-		await ctx.runMutation(internal.stripeWebhooks.logBillingAlert, {
+		await ctx.runMutation(internal.billing.logBillingAlert, {
 			source: 'invoice',
 			severity: 'error',
 			message: 'Charge dispute created',
@@ -204,7 +217,7 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 
 	if (event.type === 'credit_note.created' || event.type === 'credit_note.updated') {
 		const creditNote = event.data.object;
-		await ctx.runMutation(internal.stripeWebhooks.logBillingAlert, {
+		await ctx.runMutation(internal.billing.logBillingAlert, {
 			source: 'invoice',
 			severity: 'warning',
 			message: `Credit note ${event.type === 'credit_note.created' ? 'created' : 'updated'}`,
@@ -219,36 +232,11 @@ async function processStripeEventInConvex(ctx: any, event: any) {
 	}
 }
 
-async function upsertBillingCustomerMappingInternal(
-	ctx: any,
-	args: { userId: string; stripeCustomerId: string; email?: string },
-) {
-	const existingByUser = await ctx.db
-		.query('billing_customers')
-		.withIndex('userId', (q: any) => q.eq('userId', args.userId))
-		.first();
-
-	if (existingByUser) {
-		await ctx.db.patch(existingByUser._id, {
-			stripeCustomerId: args.stripeCustomerId,
-			email: args.email,
-			updatedAt: Date.now(),
-		});
-		return;
-	}
-
-	await ctx.db.insert('billing_customers', {
-		userId: args.userId,
-		stripeCustomerId: args.stripeCustomerId,
-		email: args.email,
-		updatedAt: Date.now(),
-	});
-}
-
 /**
  * Public webhook entrypoint. Signature verification must happen before invoking.
+ * Runs as an action (Node.js) because some event handlers need Stripe API calls.
  */
-export const processWebhookEvent = mutation({
+export const processWebhookEvent = action({
 	args: {
 		event: v.any(),
 		payload: v.optional(v.string()),
@@ -393,12 +381,13 @@ export const markWebhookEventFailed = internalMutation({
 			.query('stripe_webhook_failures')
 			.withIndex('eventId', (q) => q.eq('eventId', args.eventId))
 			.first();
+		const nextRetryCount = existingFailure ? existingFailure.retryCount + 1 : 1;
 
 		if (existingFailure) {
 			await ctx.db.patch(existingFailure._id, {
 				lastSeenAt: now,
 				lastError: args.error,
-				retryCount: existingFailure.retryCount + 1,
+				retryCount: nextRetryCount,
 				payload: args.payload,
 				resolvedAt: undefined,
 			});
@@ -414,17 +403,19 @@ export const markWebhookEventFailed = internalMutation({
 			});
 		}
 
-		await ctx.db.insert('billing_alerts', {
-			source: 'webhook',
-			severity: 'error',
-			message: `Stripe webhook processing failed: ${args.type}`,
-			context: JSON.stringify({
-				eventId: args.eventId,
-				error: args.error,
-			}),
-			createdAt: now,
-			notificationAttempts: 0,
-		});
+		if (shouldEmitWebhookFailureAlert(nextRetryCount)) {
+			await insertBillingAlert(ctx, {
+				source: 'webhook',
+				severity: 'error',
+				message: `Stripe webhook processing failed: ${args.type} (attempt ${nextRetryCount})`,
+				context: JSON.stringify({
+					eventId: args.eventId,
+					error: args.error,
+					retryCount: nextRetryCount,
+				}),
+				createdAt: now,
+			});
+		}
 
 		return { success: true };
 	},
@@ -440,13 +431,8 @@ export const upsertBillingCustomerMapping = internalMutation({
 		email: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const existingByUser = await ctx.db
-			.query('billing_customers')
-			.withIndex('userId', (q) => q.eq('userId', args.userId))
-			.first();
-
-		await upsertBillingCustomerMappingInternal(ctx, args);
-		return { action: existingByUser ? ('updated' as const) : ('inserted' as const) };
+		const action = await upsertBillingCustomerByUserId(ctx, args);
+		return { action };
 	},
 });
 
@@ -467,7 +453,7 @@ export const upsertSubscriptionFromStripe = internalMutation({
 		email: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		await upsertBillingCustomerMappingInternal(ctx, {
+		await upsertBillingCustomerByUserId(ctx, {
 			userId: args.userId,
 			stripeCustomerId: args.stripeCustomerId,
 			email: args.email,
@@ -576,7 +562,7 @@ export const listFailedWebhookEvents = internalQuery({
 		const limit = args.limit ?? 100;
 		return await ctx.db
 			.query('stripe_webhook_failures')
-			.filter((q) => q.eq(q.field('resolvedAt'), undefined))
+			.withIndex('resolvedAt', (q) => q.eq('resolvedAt', undefined))
 			.order('desc')
 			.take(limit);
 	},
@@ -594,33 +580,6 @@ export const getUserIdByStripeCustomerId = internalQuery({
 			)
 			.first();
 		return mapping?.userId ?? null;
-	},
-});
-
-export const logBillingAlert = internalMutation({
-	args: {
-		source: v.union(
-			v.literal('webhook'),
-			v.literal('overage_cron'),
-			v.literal('invoice'),
-		),
-		severity: v.union(
-			v.literal('info'),
-			v.literal('warning'),
-			v.literal('error'),
-		),
-		message: v.string(),
-		context: v.optional(v.string()),
-	},
-	handler: async (ctx, args) => {
-		await ctx.db.insert('billing_alerts', {
-			source: args.source,
-			severity: args.severity,
-			message: args.message,
-			context: args.context,
-			createdAt: Date.now(),
-			notificationAttempts: 0,
-		});
 	},
 });
 

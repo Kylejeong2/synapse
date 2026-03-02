@@ -11,21 +11,19 @@ vi.mock('../convex/_generated/api', () => ({
 describe('billing flow integration (mocked)', () => {
 	it('processes checkout completion then invoice finalization/payment for same subscription', async () => {
 		process.env.STRIPE_WEBHOOK_CONVEX_TOKEN = 'webhook_token';
-		const mutation = vi
+		const action = vi
 			.fn()
 			.mockResolvedValueOnce({ duplicate: false })
 			.mockResolvedValueOnce({ duplicate: false })
 			.mockResolvedValueOnce({ duplicate: false });
 
 		const query = vi.fn(async () => null);
-		const convexClient = { mutation, query } as any;
-		const stripe = {} as any;
+		const convexClient = { action, query } as any;
 
 		const { handleStripeEvent } = await import('../src/lib/server/stripeWebhookProcessor');
 
 		await handleStripeEvent({
 			convexClient,
-			stripe,
 			event: {
 				id: 'evt_checkout',
 				type: 'checkout.session.completed',
@@ -42,7 +40,6 @@ describe('billing flow integration (mocked)', () => {
 
 		await handleStripeEvent({
 			convexClient,
-			stripe,
 			event: {
 				id: 'evt_invoice_open',
 				type: 'invoice.finalized',
@@ -59,7 +56,6 @@ describe('billing flow integration (mocked)', () => {
 
 		await handleStripeEvent({
 			convexClient,
-			stripe,
 			event: {
 				id: 'evt_invoice_paid',
 				type: 'invoice.paid',
@@ -74,8 +70,8 @@ describe('billing flow integration (mocked)', () => {
 			payload: '{}',
 		});
 
-		expect(mutation).toHaveBeenCalledTimes(3);
-		expect(mutation).toHaveBeenNthCalledWith(
+		expect(action).toHaveBeenCalledTimes(3);
+		expect(action).toHaveBeenNthCalledWith(
 			1,
 			'stripeWebhooks:processWebhookEvent',
 			expect.objectContaining({
@@ -83,7 +79,7 @@ describe('billing flow integration (mocked)', () => {
 				event: expect.objectContaining({ id: 'evt_checkout' }),
 			}),
 		);
-		expect(mutation).toHaveBeenNthCalledWith(
+		expect(action).toHaveBeenNthCalledWith(
 			2,
 			'stripeWebhooks:processWebhookEvent',
 			expect.objectContaining({
@@ -91,7 +87,7 @@ describe('billing flow integration (mocked)', () => {
 				event: expect.objectContaining({ id: 'evt_invoice_open' }),
 			}),
 		);
-		expect(mutation).toHaveBeenNthCalledWith(
+		expect(action).toHaveBeenNthCalledWith(
 			3,
 			'stripeWebhooks:processWebhookEvent',
 			expect.objectContaining({

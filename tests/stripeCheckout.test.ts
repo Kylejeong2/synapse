@@ -60,6 +60,16 @@ vi.mock('../convex/stripe', async () => {
 	};
 });
 
+vi.mock('../convex/_generated/api', () => ({
+	internal: {
+		subscriptions: {
+			getSubscriptionByUserId: 'internal:subscriptions:getSubscriptionByUserId',
+			getBillingCustomerByUserId: 'internal:subscriptions:getBillingCustomerByUserId',
+			upsertBillingCustomerInternal: 'internal:subscriptions:upsertBillingCustomerInternal',
+		},
+	},
+}));
+
 function createCtx({
 	existingSubscription = null,
 	mappedCustomer = null,
@@ -69,34 +79,23 @@ function createCtx({
 	mappedCustomer?: unknown;
 	userId?: string;
 }) {
+	const runQuery = vi.fn(async (ref: string, _args: any) => {
+		if (ref === 'internal:subscriptions:getSubscriptionByUserId') {
+			return existingSubscription;
+		}
+		if (ref === 'internal:subscriptions:getBillingCustomerByUserId') {
+			return mappedCustomer;
+		}
+		return null;
+	});
+	const runMutation = vi.fn(async () => undefined);
+
 	return {
 		auth: {
 			getUserIdentity: vi.fn(async () => ({ subject: userId })),
 		},
-		db: {
-			query: vi.fn((table: string) => {
-				if (table === 'subscriptions') {
-					return {
-						withIndex: () => ({
-							first: vi.fn(async () => existingSubscription),
-							filter: () => ({
-								first: vi.fn(async () => existingSubscription),
-							}),
-						}),
-					};
-				}
-				if (table === 'billing_customers') {
-					return {
-						withIndex: () => ({
-							first: vi.fn(async () => mappedCustomer),
-						}),
-					};
-				}
-				throw new Error(`Unexpected table: ${table}`);
-			}),
-			insert: vi.fn(async () => 'billing_customer_1'),
-			patch: vi.fn(async () => undefined),
-		},
+		runQuery,
+		runMutation,
 	};
 }
 

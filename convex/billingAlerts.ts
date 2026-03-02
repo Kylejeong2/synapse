@@ -10,14 +10,9 @@ export const listPendingBillingAlerts = internalQuery({
 		const limit = args.limit ?? 50;
 		return await ctx.db
 			.query('billing_alerts')
+			.withIndex('resolvedAt', (q) => q.eq('resolvedAt', undefined))
 			.filter((q) =>
-				q.and(
-					q.eq(q.field('resolvedAt'), undefined),
-					q.or(
-						q.eq(q.field('severity'), 'warning'),
-						q.eq(q.field('severity'), 'error'),
-					),
-				),
+				q.or(q.eq(q.field('severity'), 'warning'), q.eq(q.field('severity'), 'error')),
 			)
 			.order('desc')
 			.take(limit);

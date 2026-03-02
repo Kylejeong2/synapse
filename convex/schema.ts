@@ -116,6 +116,7 @@ export default defineSchema({
     ),
   })
     .index('userId', ['userId'])
+    .index('status', ['status'])
     .index('subscriptionId', ['subscriptionId'])
     .index('subscriptionPeriod', ['subscriptionId', 'periodStart', 'periodEnd'])
     .index('periodStart', ['periodStart'])
@@ -146,6 +147,7 @@ export default defineSchema({
     processedAt: v.optional(v.number()),
   })
     .index('status', ['status'])
+    .index('statusNextRetry', ['status', 'nextRetryAt'])
     .index('nodeId', ['nodeId'])
     .index('nextRetryAt', ['nextRetryAt']),
 
@@ -226,5 +228,6 @@ export default defineSchema({
   })
     .index('source', ['source'])
     .index('severity', ['severity'])
+    .index('resolvedAt', ['resolvedAt'])
     .index('createdAt', ['createdAt']),
 })

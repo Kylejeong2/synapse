@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mutationMock = vi.fn();
+const actionMock = vi.fn();
 const verifyTokenMock = vi.fn();
 
 vi.mock('convex/browser', () => ({
@@ -8,6 +9,7 @@ vi.mock('convex/browser', () => ({
 		return {
 			setAuth: vi.fn(),
 			mutation: mutationMock,
+			action: actionMock,
 		};
 	}),
 }));
@@ -47,6 +49,7 @@ async function getPostHandler(routeFile: string) {
 describe('Billing management API routes', () => {
 	beforeEach(() => {
 		mutationMock.mockReset();
+		actionMock.mockReset();
 		verifyTokenMock.mockReset();
 	});
 

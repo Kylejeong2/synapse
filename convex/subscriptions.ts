@@ -1,9 +1,11 @@
-import { mutation, query } from './_generated/server';
+import { action, mutation, query, internalMutation, internalQuery } from './_generated/server';
+import { internal } from './_generated/api';
 import { v } from 'convex/values';
 import { DEFAULT_INCLUDED_TOKEN_CREDIT_USD, PRO_MONTHLY_PRICE_USD } from './pricing';
 import { stripe, getStripePriceId } from './stripe';
 import { isOpenBillingSubscriptionStatus } from './subscriptionStatus';
 import { requireAuthenticatedUserId } from './auth';
+import { upsertBillingCustomerByUserId } from './billingCustomers';
 
 let validatedPriceId: string | null = null;
 
@@ -43,46 +45,52 @@ async function assertStripeSubscriptionPriceMatchesCatalog(): Promise<void> {
 	validatedPriceId = priceId;
 }
 
-/**
- * Upsert durable user<->Stripe customer mapping.
- */
-async function upsertBillingCustomer(
-	ctx: any,
-	args: { userId: string; stripeCustomerId: string; email?: string },
-): Promise<void> {
-	const existingByUser = await ctx.db
-		.query('billing_customers')
-		.withIndex('userId', (q: any) => q.eq('userId', args.userId))
-		.first();
+// --- Internal DB helpers (usable from actions) ---
 
-	if (existingByUser) {
-		await ctx.db.patch(existingByUser._id, {
-			stripeCustomerId: args.stripeCustomerId,
-			email: args.email,
-			updatedAt: Date.now(),
-		});
-		return;
-	}
+export const getSubscriptionByUserId = internalQuery({
+	args: { userId: v.string() },
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query('subscriptions')
+			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.first();
+	},
+});
 
-	await ctx.db.insert('billing_customers', {
-		userId: args.userId,
-		stripeCustomerId: args.stripeCustomerId,
-		email: args.email,
-		updatedAt: Date.now(),
-	});
-}
+export const getBillingCustomerByUserId = internalQuery({
+	args: { userId: v.string() },
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query('billing_customers')
+			.withIndex('userId', (q) => q.eq('userId', args.userId))
+			.first();
+	},
+});
+
+export const upsertBillingCustomerInternal = internalMutation({
+	args: {
+		userId: v.string(),
+		stripeCustomerId: v.string(),
+		email: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		await upsertBillingCustomerByUserId(ctx, args);
+	},
+});
+
+// --- Actions (Node.js runtime, can call Stripe APIs) ---
 
 /**
  * Resolve customer id using local mapping first, then Stripe lookup/create.
  */
-async function findOrCreateStripeCustomer(
+async function findOrCreateStripeCustomerViaAction(
 	ctx: any,
 	args: { userId: string; userEmail?: string },
 ): Promise<string> {
-	const mappedCustomer = await ctx.db
-		.query('billing_customers')
-		.withIndex('userId', (q: any) => q.eq('userId', args.userId))
-		.first();
+	const mappedCustomer = await ctx.runQuery(
+		internal.subscriptions.getBillingCustomerByUserId,
+		{ userId: args.userId },
+	);
 
 	if (mappedCustomer?.stripeCustomerId) {
 		return mappedCustomer.stripeCustomerId;
@@ -120,7 +128,7 @@ async function findOrCreateStripeCustomer(
 		customerId = created.id;
 	}
 
-	await upsertBillingCustomer(ctx, {
+	await ctx.runMutation(internal.subscriptions.upsertBillingCustomerInternal, {
 		userId: args.userId,
 		stripeCustomerId: customerId,
 		email: args.userEmail,
@@ -132,16 +140,21 @@ async function findOrCreateStripeCustomer(
 /**
  * Create a Stripe Checkout session for subscription.
  */
-export const createCheckoutSession = mutation({
+export const createCheckoutSession = action({
 	args: {
 		userEmail: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const userId = await requireAuthenticatedUserId(ctx);
-		const existingSubscription = await ctx.db
-			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', userId))
-			.first();
+		const identity = await ctx.auth.getUserIdentity();
+		const userId = identity?.subject;
+		if (!userId) {
+			throw new Error('Unauthorized');
+		}
+
+		const existingSubscription = await ctx.runQuery(
+			internal.subscriptions.getSubscriptionByUserId,
+			{ userId },
+		);
 
 		if (
 			existingSubscription &&
@@ -150,7 +163,7 @@ export const createCheckoutSession = mutation({
 			throw new Error('User already has an existing subscription');
 		}
 
-		const customerId = await findOrCreateStripeCustomer(ctx, {
+		const customerId = await findOrCreateStripeCustomerViaAction(ctx, {
 			userId,
 			userEmail: args.userEmail,
 		});
@@ -177,14 +190,19 @@ export const createCheckoutSession = mutation({
 /**
  * Create a Stripe Billing Portal session for self-serve billing management.
  */
-export const createBillingPortalSession = mutation({
+export const createBillingPortalSession = action({
 	args: {},
-	handler: async (ctx) => {
-		const userId = await requireAuthenticatedUserId(ctx);
-		const mappedCustomer = await ctx.db
-			.query('billing_customers')
-			.withIndex('userId', (q) => q.eq('userId', userId))
-			.first();
+	handler: async (ctx): Promise<{ url: string }> => {
+		const identity = await ctx.auth.getUserIdentity();
+		const userId = identity?.subject;
+		if (!userId) {
+			throw new Error('Unauthorized');
+		}
+
+		const mappedCustomer: { stripeCustomerId?: string } | null = await ctx.runQuery(
+			internal.subscriptions.getBillingCustomerByUserId,
+			{ userId },
+		);
 
 		if (!mappedCustomer?.stripeCustomerId) {
 			throw new Error('No billing customer found for user');
@@ -202,57 +220,68 @@ export const createBillingPortalSession = mutation({
 /**
  * Set subscription cancellation at period end.
  */
-export const cancelSubscriptionAtPeriodEnd = mutation({
+export const cancelSubscriptionAtPeriodEnd = action({
 	args: {},
 	handler: async (ctx) => {
-		const userId = await requireAuthenticatedUserId(ctx);
-		const subscription = await ctx.db
-			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', userId))
-			.first();
+		const identity = await ctx.auth.getUserIdentity();
+		const userId = identity?.subject;
+		if (!userId) {
+			throw new Error('Unauthorized');
+		}
+
+		const subscription = await ctx.runQuery(
+			internal.subscriptions.getSubscriptionByUserId,
+			{ userId },
+		);
 
 		if (!subscription) {
 			throw new Error('Subscription not found');
 		}
 
-		await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+		const updated = await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
 			cancel_at_period_end: true,
 		});
 
-		await ctx.db.patch(subscription._id, {
-			cancelAtPeriodEnd: true,
-		});
-
-		return { success: true };
+		// Stripe is the source of truth; webhook updates local subscription state.
+		return {
+			success: true,
+			cancelAtPeriodEnd: updated.cancel_at_period_end,
+			pendingWebhookSync: true,
+		};
 	},
 });
 
 /**
  * Resume a subscription previously set to cancel at period end.
  */
-export const resumeSubscription = mutation({
+export const resumeSubscription = action({
 	args: {},
 	handler: async (ctx) => {
-		const userId = await requireAuthenticatedUserId(ctx);
-		const subscription = await ctx.db
-			.query('subscriptions')
-			.withIndex('userId', (q) => q.eq('userId', userId))
-			.first();
+		const identity = await ctx.auth.getUserIdentity();
+		const userId = identity?.subject;
+		if (!userId) {
+			throw new Error('Unauthorized');
+		}
+
+		const subscription = await ctx.runQuery(
+			internal.subscriptions.getSubscriptionByUserId,
+			{ userId },
+		);
 
 		if (!subscription) {
 			throw new Error('Subscription not found');
 		}
 
-		await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+		const updated = await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
 			cancel_at_period_end: false,
 		});
 
-		await ctx.db.patch(subscription._id, {
-			cancelAtPeriodEnd: false,
-			status: 'active',
-		});
-
-		return { success: true };
+		// Stripe is the source of truth; webhook updates local subscription state.
+		return {
+			success: true,
+			cancelAtPeriodEnd: updated.cancel_at_period_end,
+			pendingWebhookSync: true,
+		};
 	},
 });
 

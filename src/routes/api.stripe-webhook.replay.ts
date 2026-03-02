@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
-import Stripe from "stripe";
+import { createStripeClient, getRequiredEnv } from "@/lib/server/stripeServer";
 import { handleStripeEvent } from "@/lib/server/stripeWebhookProcessor";
 
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
@@ -10,23 +10,6 @@ if (!CONVEX_URL) {
 }
 
 const convexClient = new ConvexHttpClient(CONVEX_URL);
-
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-12-15.clover";
-
-function getRequiredEnv(name: string): string {
-	const value = process.env[name];
-	if (!value) {
-		throw new Error(`${name} environment variable is not set`);
-	}
-	return value;
-}
-
-function createStripeClient(): Stripe {
-	return new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"), {
-		apiVersion: STRIPE_API_VERSION,
-		typescript: true,
-	});
-}
 
 function tokenMatches(actual: string | null, expected: string): boolean {
 	if (!actual) return false;
@@ -92,7 +75,6 @@ export const Route = createFileRoute("/api/stripe-webhook/replay")({
 					const event = await stripe.events.retrieve(eventId);
 					const result = await handleStripeEvent({
 						convexClient,
-						stripe,
 						event,
 						payload: JSON.stringify(event),
 					});

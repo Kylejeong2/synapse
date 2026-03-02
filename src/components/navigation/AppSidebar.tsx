@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Doc } from "convex/_generated/dataModel";
-import { Home, MessageSquare, Plus } from "lucide-react";
+import { CreditCard, Home, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,22 @@ export function AppSidebar() {
 									<button type="button" onClick={() => navigate({ to: "/" })}>
 										<Home className="h-4 w-4" />
 										<span>Home</span>
+									</button>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton asChild>
+									<button
+										type="button"
+										onClick={() =>
+											navigate({
+												to: "/pricing",
+												search: { success: false, canceled: false },
+											})
+										}
+									>
+										<CreditCard className="h-4 w-4" />
+										<span>Billing</span>
 									</button>
 								</SidebarMenuButton>
 							</SidebarMenuItem>

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../convex/_generated/server', () => ({
+	action: (opts: { handler: Function }) => opts,
 	mutation: (opts: { handler: Function }) => opts,
 	query: (opts: { handler: Function }) => opts,
 	internalMutation: (opts: { handler: Function }) => opts,
@@ -109,6 +110,37 @@ describe('convex/stripeWebhooks', () => {
 		expect(insert).toHaveBeenCalledWith(
 			'billing_alerts',
 			expect.objectContaining({ source: 'webhook', severity: 'error' }),
+		);
+	});
+
+	it('markWebhookEventFailed suppresses alert spam between thresholds', async () => {
+		const patch = vi.fn(async () => undefined);
+		const insert = vi.fn(async () => 'doc_1');
+		const db = {
+			query: vi
+				.fn()
+				.mockImplementationOnce(() => q({ _id: 'evt_doc', attempts: 2 }))
+				.mockImplementationOnce(() =>
+					q({ _id: 'failure_doc', retryCount: 1, resolvedAt: undefined }),
+				),
+			patch,
+			insert,
+		};
+		const { markWebhookEventFailed } = await import('../convex/stripeWebhooks');
+		await (markWebhookEventFailed as any).handler({ db }, {
+			eventId: 'evt_3',
+			type: 'invoice.paid',
+			error: 'boom',
+			payload: '{}',
+		});
+
+		expect(patch).toHaveBeenCalledWith(
+			'failure_doc',
+			expect.objectContaining({ retryCount: 2 }),
+		);
+		expect(insert).not.toHaveBeenCalledWith(
+			'billing_alerts',
+			expect.anything(),
 		);
 	});
 

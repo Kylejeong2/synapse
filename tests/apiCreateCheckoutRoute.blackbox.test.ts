@@ -83,7 +83,7 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 		});
 
 		expect(fetchCalls).toHaveLength(1);
-		expect(String(fetchCalls[0].input)).toMatch(/\/api\/mutation$/);
+		expect(String(fetchCalls[0].input)).toMatch(/\/api\/action$/);
 		expect(fetchCalls[0].init?.method).toBe("POST");
 
 		const requestBody = JSON.parse(fetchCalls[0].init?.body as string);
@@ -133,7 +133,6 @@ describe("POST /api/create-checkout (black-box + real ConvexHttpClient)", () => 
 		expect(response.status).toBe(500);
 		await expect(response.json()).resolves.toEqual({
 			error: "Failed to create checkout session",
-			details: "Upstream checkout failed",
 		});
 	});
 });

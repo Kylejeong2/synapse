@@ -4,6 +4,7 @@ import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { MIN_OVERAGE_INVOICE_THRESHOLD_USD } from './pricing';
 import { stripe } from './stripe';
+import { insertBillingAlert } from './billingAlertsShared';
 
 /**
  * Process overage billing for expired billing cycles.
@@ -196,13 +197,6 @@ export const logBillingAlert = internalMutation({
 		context: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		await ctx.db.insert('billing_alerts', {
-			source: args.source,
-			severity: args.severity,
-			message: args.message,
-			context: args.context,
-			createdAt: Date.now(),
-			notificationAttempts: 0,
-		});
+		await insertBillingAlert(ctx, args);
 	},
 });

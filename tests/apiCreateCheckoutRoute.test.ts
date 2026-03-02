@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mutationMock = vi.fn();
+const actionMock = vi.fn();
 const verifyTokenMock = vi.fn();
 
 vi.mock("convex/browser", () => ({
@@ -8,6 +9,7 @@ vi.mock("convex/browser", () => ({
 		return {
 			setAuth: vi.fn(),
 			mutation: mutationMock,
+			action: actionMock,
 		};
 	}),
 }));
@@ -46,6 +48,7 @@ describe("POST /api/create-checkout", () => {
 
 	beforeEach(() => {
 		mutationMock.mockReset();
+		actionMock.mockReset();
 		verifyTokenMock.mockReset();
 		consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 	});
@@ -69,7 +72,7 @@ describe("POST /api/create-checkout", () => {
 			error: "Unauthorized",
 		});
 		expect(verifyTokenMock).not.toHaveBeenCalled();
-		expect(mutationMock).not.toHaveBeenCalled();
+		expect(actionMock).not.toHaveBeenCalled();
 	});
 
 	it("returns 401 when token verification fails", async () => {
@@ -90,12 +93,12 @@ describe("POST /api/create-checkout", () => {
 		await expect(response.json()).resolves.toEqual({
 			error: "Unauthorized",
 		});
-		expect(mutationMock).not.toHaveBeenCalled();
+		expect(actionMock).not.toHaveBeenCalled();
 	});
 
 	it("returns checkout URL on success with verified Clerk user", async () => {
 		verifyTokenMock.mockResolvedValueOnce({ sub: "user_123" });
-		mutationMock.mockResolvedValueOnce({ url: "https://checkout.stripe.com/c/test" });
+		actionMock.mockResolvedValueOnce({ url: "https://checkout.stripe.com/c/test" });
 		const post = await getPostHandler();
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {
@@ -118,7 +121,7 @@ describe("POST /api/create-checkout", () => {
 		expect(verifyTokenMock).toHaveBeenCalledWith("token_123", {
 			secretKey: "sk_test_clerk",
 		});
-		expect(mutationMock).toHaveBeenCalledWith(
+		expect(actionMock).toHaveBeenCalledWith(
 			"subscriptions:createCheckoutSession",
 			{
 				userEmail: "user@example.com",
@@ -128,7 +131,7 @@ describe("POST /api/create-checkout", () => {
 
 	it("returns 500 when mutation succeeds without URL", async () => {
 		verifyTokenMock.mockResolvedValueOnce({ sub: "user_123" });
-		mutationMock.mockResolvedValueOnce({ url: null });
+		actionMock.mockResolvedValueOnce({ url: null });
 		const post = await getPostHandler();
 		const response = await post({
 			request: new Request("http://localhost/api/create-checkout", {

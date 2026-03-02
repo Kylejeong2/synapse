@@ -1,4 +1,4 @@
-import { mutation, query } from './_generated/server';
+import { internalMutation, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { requireAuthenticatedUserId } from './auth';
 import { DEFAULT_TOKEN_PRICING_ROWS } from './defaultTokenPricing';
@@ -250,5 +250,33 @@ export const seedDefaultModelPricing = mutation({
 			updated,
 			total: DEFAULT_TOKEN_PRICING_ROWS.length,
 		};
+	},
+});
+
+/**
+ * Auto-seed default pricing if the token_pricing table is empty.
+ * Called by the cron scheduler on startup to ensure models are billable.
+ */
+export const ensureDefaultPricingSeeded = internalMutation({
+	handler: async (ctx) => {
+		const anyRow = await ctx.db
+			.query('token_pricing')
+			.first();
+
+		if (anyRow) {
+			return { seeded: false, reason: 'already_populated' as const };
+		}
+
+		let inserted = 0;
+		for (const row of DEFAULT_TOKEN_PRICING_ROWS) {
+			const patch = buildTokenPricingPatch(row);
+			await ctx.db.insert('token_pricing', {
+				model: row.model,
+				...patch,
+			});
+			inserted++;
+		}
+
+		return { seeded: true, inserted };
 	},
 });

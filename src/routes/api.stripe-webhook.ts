@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
-import Stripe from "stripe";
+import { createStripeClient, getRequiredEnv } from "@/lib/server/stripeServer";
 import { handleStripeEvent } from "@/lib/server/stripeWebhookProcessor";
 
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
@@ -9,23 +9,6 @@ if (!CONVEX_URL) {
 }
 
 const convexClient = new ConvexHttpClient(CONVEX_URL);
-
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-12-15.clover";
-
-function getRequiredEnv(name: string): string {
-	const value = process.env[name];
-	if (!value) {
-		throw new Error(`${name} environment variable is not set`);
-	}
-	return value;
-}
-
-function createStripeClient(): Stripe {
-	return new Stripe(getRequiredEnv("STRIPE_SECRET_KEY"), {
-		apiVersion: STRIPE_API_VERSION,
-		typescript: true,
-	});
-}
 
 export const Route = createFileRoute("/api/stripe-webhook")({
 	server: {
@@ -47,7 +30,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 					const stripe = createStripeClient();
 					const webhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
 
-					let event: Stripe.Event;
+					let event: Parameters<typeof handleStripeEvent>[0]["event"];
 					try {
 						event = stripe.webhooks.constructEvent(
 							payload,
@@ -69,7 +52,6 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 
 					const result = await handleStripeEvent({
 						convexClient,
-						stripe,
 						event,
 						payload,
 					});
@@ -93,7 +75,6 @@ export const Route = createFileRoute("/api/stripe-webhook")({
 					return new Response(
 						JSON.stringify({
 							error: "Stripe webhook processing failed",
-							details: error instanceof Error ? error.message : String(error),
 						}),
 						{
 							status: 500,

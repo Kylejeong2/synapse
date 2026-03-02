@@ -499,7 +499,6 @@ export const Route = createFileRoute("/api/chat")({
 					return new Response(
 						JSON.stringify({
 							error: "Failed to process chat request",
-							details: error instanceof Error ? error.message : String(error),
 							request_id: requestId,
 						}),
 						{

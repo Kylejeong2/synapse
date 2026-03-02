@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mutationMock = vi.fn();
+const actionMock = vi.fn();
 const eventsRetrieveMock = vi.fn();
 
 vi.mock('convex/browser', () => ({
 	ConvexHttpClient: vi.fn(function ConvexHttpClientMock() {
 		return {
 			mutation: mutationMock,
+			action: actionMock,
 			query: vi.fn(async () => null),
 		};
 	}),
@@ -53,6 +55,7 @@ async function getReplayHandler() {
 describe('POST /api/stripe-webhook/replay', () => {
 	beforeEach(() => {
 		mutationMock.mockReset();
+		actionMock.mockReset();
 		eventsRetrieveMock.mockReset();
 	});
 
@@ -75,7 +78,7 @@ describe('POST /api/stripe-webhook/replay', () => {
 			created: 1,
 			data: { object: { subscription: 'sub_1', customer: 'cus_1' } },
 		});
-		mutationMock.mockResolvedValueOnce({ duplicate: false });
+		actionMock.mockResolvedValueOnce({ duplicate: false });
 
 		const post = await getReplayHandler();
 		const response = await post({
@@ -94,7 +97,7 @@ describe('POST /api/stripe-webhook/replay', () => {
 			replayed: true,
 			duplicate: false,
 		});
-		expect(mutationMock).toHaveBeenCalledWith(
+		expect(actionMock).toHaveBeenCalledWith(
 			'stripeWebhooks:processWebhookEvent',
 			expect.objectContaining({
 				token: 'convex_webhook_token',

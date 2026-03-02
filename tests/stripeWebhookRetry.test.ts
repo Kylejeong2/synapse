@@ -10,6 +10,7 @@ vi.mock('../convex/stripe', () => ({
 }));
 
 vi.mock('../convex/_generated/server', () => ({
+	action: (opts: { handler: Function }) => opts,
 	internalMutation: (opts: { handler: Function }) => opts,
 	internalQuery: (opts: { handler: Function }) => opts,
 	internalAction: (opts: { handler: Function }) => opts,
