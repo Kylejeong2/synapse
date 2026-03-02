@@ -10,15 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TreeIdRouteImport } from './routes/tree.$id'
 import { Route as LogsIdRouteImport } from './routes/logs.$id'
 import { Route as ChatIdRouteImport } from './routes/chat.$id'
+import { Route as ApiSubscriptionSpendCapRouteImport } from './routes/api.subscription-spend-cap'
+import { Route as ApiSubscriptionResumeRouteImport } from './routes/api.subscription-resume'
+import { Route as ApiSubscriptionCancelRouteImport } from './routes/api.subscription-cancel'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
+import { Route as ApiCreateCheckoutRouteImport } from './routes/api.create-checkout'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as ApiBillingPortalRouteImport } from './routes/api.billing-portal'
+import { Route as ApiStripeWebhookReplayRouteImport } from './routes/api.stripe-webhook.replay'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -41,62 +54,158 @@ const ChatIdRoute = ChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSubscriptionSpendCapRoute = ApiSubscriptionSpendCapRouteImport.update({
+  id: '/api/subscription-spend-cap',
+  path: '/api/subscription-spend-cap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSubscriptionResumeRoute = ApiSubscriptionResumeRouteImport.update({
+  id: '/api/subscription-resume',
+  path: '/api/subscription-resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSubscriptionCancelRoute = ApiSubscriptionCancelRouteImport.update({
+  id: '/api/subscription-cancel',
+  path: '/api/subscription-cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCreateCheckoutRoute = ApiCreateCheckoutRouteImport.update({
+  id: '/api/create-checkout',
+  path: '/api/create-checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingPortalRoute = ApiBillingPortalRouteImport.update({
+  id: '/api/billing-portal',
+  path: '/api/billing-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookReplayRoute = ApiStripeWebhookReplayRouteImport.update({
+  id: '/replay',
+  path: '/replay',
+  getParentRoute: () => ApiStripeWebhookRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
+  '/api/billing-portal': typeof ApiBillingPortalRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRouteWithChildren
+  '/api/subscription-cancel': typeof ApiSubscriptionCancelRoute
+  '/api/subscription-resume': typeof ApiSubscriptionResumeRoute
+  '/api/subscription-spend-cap': typeof ApiSubscriptionSpendCapRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
+  '/api/stripe-webhook/replay': typeof ApiStripeWebhookReplayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
+  '/api/billing-portal': typeof ApiBillingPortalRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRouteWithChildren
+  '/api/subscription-cancel': typeof ApiSubscriptionCancelRoute
+  '/api/subscription-resume': typeof ApiSubscriptionResumeRoute
+  '/api/subscription-spend-cap': typeof ApiSubscriptionSpendCapRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
+  '/api/stripe-webhook/replay': typeof ApiStripeWebhookReplayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
+  '/api/billing-portal': typeof ApiBillingPortalRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/create-checkout': typeof ApiCreateCheckoutRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRouteWithChildren
+  '/api/subscription-cancel': typeof ApiSubscriptionCancelRoute
+  '/api/subscription-resume': typeof ApiSubscriptionResumeRoute
+  '/api/subscription-spend-cap': typeof ApiSubscriptionSpendCapRoute
   '/chat/$id': typeof ChatIdRoute
   '/logs/$id': typeof LogsIdRoute
   '/tree/$id': typeof TreeIdRoute
+  '/api/stripe-webhook/replay': typeof ApiStripeWebhookReplayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/pricing'
     | '/sign-in'
+    | '/api/billing-portal'
     | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/api/subscription-cancel'
+    | '/api/subscription-resume'
+    | '/api/subscription-spend-cap'
     | '/chat/$id'
     | '/logs/$id'
     | '/tree/$id'
+    | '/api/stripe-webhook/replay'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/api/chat' | '/chat/$id' | '/logs/$id' | '/tree/$id'
+  to:
+    | '/'
+    | '/pricing'
+    | '/sign-in'
+    | '/api/billing-portal'
+    | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/api/subscription-cancel'
+    | '/api/subscription-resume'
+    | '/api/subscription-spend-cap'
+    | '/chat/$id'
+    | '/logs/$id'
+    | '/tree/$id'
+    | '/api/stripe-webhook/replay'
   id:
     | '__root__'
     | '/'
+    | '/pricing'
     | '/sign-in'
+    | '/api/billing-portal'
     | '/api/chat'
+    | '/api/create-checkout'
+    | '/api/stripe-webhook'
+    | '/api/subscription-cancel'
+    | '/api/subscription-resume'
+    | '/api/subscription-spend-cap'
     | '/chat/$id'
     | '/logs/$id'
     | '/tree/$id'
+    | '/api/stripe-webhook/replay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PricingRoute: typeof PricingRoute
   SignInRoute: typeof SignInRoute
+  ApiBillingPortalRoute: typeof ApiBillingPortalRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCreateCheckoutRoute: typeof ApiCreateCheckoutRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRouteWithChildren
+  ApiSubscriptionCancelRoute: typeof ApiSubscriptionCancelRoute
+  ApiSubscriptionResumeRoute: typeof ApiSubscriptionResumeRoute
+  ApiSubscriptionSpendCapRoute: typeof ApiSubscriptionSpendCapRoute
   ChatIdRoute: typeof ChatIdRoute
   LogsIdRoute: typeof LogsIdRoute
   TreeIdRoute: typeof TreeIdRoute
@@ -109,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -139,6 +255,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/subscription-spend-cap': {
+      id: '/api/subscription-spend-cap'
+      path: '/api/subscription-spend-cap'
+      fullPath: '/api/subscription-spend-cap'
+      preLoaderRoute: typeof ApiSubscriptionSpendCapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/subscription-resume': {
+      id: '/api/subscription-resume'
+      path: '/api/subscription-resume'
+      fullPath: '/api/subscription-resume'
+      preLoaderRoute: typeof ApiSubscriptionResumeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/subscription-cancel': {
+      id: '/api/subscription-cancel'
+      path: '/api/subscription-cancel'
+      fullPath: '/api/subscription-cancel'
+      preLoaderRoute: typeof ApiSubscriptionCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/create-checkout': {
+      id: '/api/create-checkout'
+      path: '/api/create-checkout'
+      fullPath: '/api/create-checkout'
+      preLoaderRoute: typeof ApiCreateCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -146,13 +297,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing-portal': {
+      id: '/api/billing-portal'
+      path: '/api/billing-portal'
+      fullPath: '/api/billing-portal'
+      preLoaderRoute: typeof ApiBillingPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe-webhook/replay': {
+      id: '/api/stripe-webhook/replay'
+      path: '/replay'
+      fullPath: '/api/stripe-webhook/replay'
+      preLoaderRoute: typeof ApiStripeWebhookReplayRouteImport
+      parentRoute: typeof ApiStripeWebhookRoute
+    }
   }
 }
 
+interface ApiStripeWebhookRouteChildren {
+  ApiStripeWebhookReplayRoute: typeof ApiStripeWebhookReplayRoute
+}
+
+const ApiStripeWebhookRouteChildren: ApiStripeWebhookRouteChildren = {
+  ApiStripeWebhookReplayRoute: ApiStripeWebhookReplayRoute,
+}
+
+const ApiStripeWebhookRouteWithChildren =
+  ApiStripeWebhookRoute._addFileChildren(ApiStripeWebhookRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PricingRoute: PricingRoute,
   SignInRoute: SignInRoute,
+  ApiBillingPortalRoute: ApiBillingPortalRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCreateCheckoutRoute: ApiCreateCheckoutRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRouteWithChildren,
+  ApiSubscriptionCancelRoute: ApiSubscriptionCancelRoute,
+  ApiSubscriptionResumeRoute: ApiSubscriptionResumeRoute,
+  ApiSubscriptionSpendCapRoute: ApiSubscriptionSpendCapRoute,
   ChatIdRoute: ChatIdRoute,
   LogsIdRoute: LogsIdRoute,
   TreeIdRoute: TreeIdRoute,

@@ -1,11 +1,28 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { ConvexTimer, generateOperationId, logConvexOperation } from './logger'
+import { FREE_TIER_MAX_CONVERSATIONS } from './pricing'
+import { isBillingEntitledSubscriptionStatus } from './subscriptionStatus'
+import { requireAuthenticatedUserId } from './auth'
+
+async function assertConversationOwner(
+	ctx: any,
+	conversationId: any,
+	userId: string,
+) {
+	const conversation = await ctx.db.get(conversationId)
+	if (!conversation) {
+		throw new Error('Conversation not found')
+	}
+	if (conversation.userId !== userId) {
+		throw new Error('Forbidden')
+	}
+	return conversation
+}
 
 // Create a new conversation
 export const create = mutation({
   args: {
-    userId: v.string(),
     title: v.string(),
     requestId: v.optional(v.string()),
   },
@@ -14,10 +31,38 @@ export const create = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
+
+      // Check if user has active subscription
+      const subscription = await ctx.db
+        .query('subscriptions')
+        .withIndex('userId', (q) => q.eq('userId', userId))
+        .first()
+
+      const hasBillingEntitlement = Boolean(
+        subscription && isBillingEntitledSubscriptionStatus(subscription.status),
+      )
+
+      // If no subscription, check free tier limits
+      if (!hasBillingEntitlement) {
+        const existingFreeTierConversations = await ctx.db
+          .query('conversations')
+          .withIndex('userId', (q) => q.eq('userId', userId))
+          .filter((q) => q.eq(q.field('isFreeTier'), true))
+          .collect()
+
+        if (existingFreeTierConversations.length >= FREE_TIER_MAX_CONVERSATIONS) {
+          throw new Error(
+            `Free tier users are limited to ${FREE_TIER_MAX_CONVERSATIONS} conversation${FREE_TIER_MAX_CONVERSATIONS === 1 ? '' : 's'}. Please upgrade to create more conversations.`,
+          )
+        }
+      }
+
       const conversationId = await ctx.db.insert('conversations', {
-        userId: args.userId,
+        userId,
         title: args.title,
         lastAccessedAt: Date.now(),
+        isFreeTier: !hasBillingEntitlement, // Mark as free tier if no paid/trial entitlement
       })
       
       logConvexOperation({
@@ -27,7 +72,7 @@ export const create = mutation({
         operation_name: 'conversations.create',
         timestamp: Date.now(),
         duration_ms: timer.elapsed(),
-        user_id: args.userId,
+        user_id: userId,
         conversation_id: conversationId,
         status: 'success',
         service_name: 'synapse-convex',
@@ -36,6 +81,7 @@ export const create = mutation({
       
       return conversationId
     } catch (error) {
+      const identity = await ctx.auth.getUserIdentity()
       logConvexOperation({
         operation_id: operationId,
         request_id: args.requestId,
@@ -43,7 +89,7 @@ export const create = mutation({
         operation_name: 'conversations.create',
         timestamp: Date.now(),
         duration_ms: timer.elapsed(),
-        user_id: args.userId,
+        user_id: identity?.subject,
         status: 'error',
         error_type: error instanceof Error ? error.name : 'Unknown',
         error_message: error instanceof Error ? error.message : String(error),
@@ -67,7 +113,9 @@ export const updateRootNode = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { conversationId, rootNodeId } = args
+      await assertConversationOwner(ctx, conversationId, userId)
       await ctx.db.patch(conversationId, { rootNodeId })
       
       logConvexOperation({
@@ -113,7 +161,9 @@ export const updateLastAccessed = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { conversationId } = args
+      await assertConversationOwner(ctx, conversationId, userId)
       await ctx.db.patch(conversationId, {
         lastAccessedAt: Date.now(),
       })
@@ -153,7 +203,6 @@ export const updateLastAccessed = mutation({
 // Get all conversations for a user
 export const getUserConversations = query({
   args: {
-    userId: v.string(),
     requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -161,7 +210,7 @@ export const getUserConversations = query({
     const timer = new ConvexTimer()
     
     try {
-      const { userId } = args
+      const userId = await requireAuthenticatedUserId(ctx)
       const conversations = await ctx.db
         .query('conversations')
         .withIndex('userId', (q) => q.eq('userId', userId))
@@ -204,6 +253,7 @@ export const getUserConversations = query({
       
       return result
     } catch (error) {
+      const identity = await ctx.auth.getUserIdentity()
       logConvexOperation({
         operation_id: operationId,
         request_id: args.requestId,
@@ -211,7 +261,7 @@ export const getUserConversations = query({
         operation_name: 'conversations.getUserConversations',
         timestamp: Date.now(),
         duration_ms: timer.elapsed(),
-        user_id: args.userId,
+        user_id: identity?.subject,
         status: 'error',
         error_type: error instanceof Error ? error.name : 'Unknown',
         error_message: error instanceof Error ? error.message : String(error),
@@ -234,9 +284,13 @@ export const getConversation = query({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { conversationId } = args
       const conversation = await ctx.db.get(conversationId)
       if (!conversation) return null
+      if (conversation.userId !== userId) {
+        throw new Error('Forbidden')
+      }
 
       const nodes = await ctx.db
         .query('nodes')
@@ -296,7 +350,18 @@ export const deleteConversation = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { conversationId } = args
+      
+      // Check if this is a free tier conversation
+      const conversation = await assertConversationOwner(ctx, conversationId, userId)
+
+      if (conversation.isFreeTier) {
+        throw new Error(
+          'Free tier conversations cannot be deleted. Please upgrade to manage your conversations.',
+        )
+      }
+
       // Delete all nodes first
       const nodes = await ctx.db
         .query('nodes')
@@ -453,7 +518,9 @@ export const updateDefaultModel = mutation({
     const timer = new ConvexTimer()
     
     try {
+      const userId = await requireAuthenticatedUserId(ctx)
       const { conversationId, model } = args
+      await assertConversationOwner(ctx, conversationId, userId)
       await ctx.db.patch(conversationId, { defaultModel: model })
       
       logConvexOperation({
@@ -487,4 +554,3 @@ export const updateDefaultModel = mutation({
     }
   },
 })
-

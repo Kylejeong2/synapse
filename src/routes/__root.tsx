@@ -77,12 +77,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<ThemeProvider>
-					<ConvexProvider>
-						<ClerkProvider>
+					<ClerkProvider>
+						<ConvexProvider>
 							{children}
 							<Toaster />
-						</ClerkProvider>
-					</ConvexProvider>
+						</ConvexProvider>
+					</ClerkProvider>
 				</ThemeProvider>
 				<Scripts />
 			</body>

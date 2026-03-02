@@ -1,0 +1,28 @@
+name: Stripe Live Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * *"
+
+jobs:
+  stripe-live:
+    name: Live Stripe Smoke Test
+    runs-on: ubuntu-latest
+    if: ${{ secrets.STRIPE_SECRET_KEY != '' && secrets.STRIPE_LIVE_TEST_PRICE_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:stripe:live
+        env:
+          RUN_STRIPE_LIVE_TESTS: "1"
+          STRIPE_ALLOW_NETWORK_TESTS: "1"
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_LIVE_TEST_PRICE_ID: ${{ secrets.STRIPE_LIVE_TEST_PRICE_ID }}

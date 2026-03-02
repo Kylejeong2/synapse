@@ -6,12 +6,9 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
-/** Fetches all conversations for a user, sorted by last accessed. Skips query if userId is null/undefined. */
-export function useConversations(userId: string | null | undefined) {
-	return useQuery(
-		api.conversations.getUserConversations,
-		userId ? { userId } : "skip",
-	);
+/** Fetches all conversations for the authenticated user, sorted by last accessed. */
+export function useConversations() {
+	return useQuery(api.conversations.getUserConversations, {});
 }
 
 /** Fetches a single conversation by ID. Skips query if conversationId is null. */

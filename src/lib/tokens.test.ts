@@ -6,12 +6,17 @@ const nonThinking: ModelConfig = {
 	provider: "openai",
 	name: "GPT-5.2",
 	thinking: false,
+	pricePer1kInput: 0.00175,
+	pricePer1kOutput: 0.014,
 };
 
 const thinking: ModelConfig = {
 	provider: "anthropic",
 	name: "Claude Sonnet 4.5 Thinking",
 	thinking: true,
+	pricePer1kInput: 0.003,
+	pricePer1kOutput: 0.015,
+	pricePer1kThinking: 0.015,
 };
 
 describe("calculateTotalTokens", () => {

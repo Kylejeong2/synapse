@@ -26,7 +26,7 @@ import "./dashboard.css";
 export function DashboardPage() {
 	const { user } = useUser();
 	const navigate = useNavigate();
-	const conversations = useConversations(user?.id);
+	const conversations = useConversations();
 	const stats = useDashboardStats(user?.id);
 	const recentConversations = useRecentConversations(user?.id, 3);
 	const createConversation = useCreateConversation();
@@ -45,7 +45,6 @@ export function DashboardPage() {
 		setIsCreating(true);
 		try {
 			const conversationId = await createConversation({
-				userId: user.id,
 				title: "New Conversation",
 			});
 			navigate({

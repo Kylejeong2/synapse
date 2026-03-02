@@ -1,0 +1,5 @@
+export const FREE_TIER_MAX_CONVERSATIONS = 1;
+export const FREE_TIER_MAX_TOKENS = 20_000;
+
+export const PRO_MONTHLY_PRICE_USD = 20;
+export const PRO_INCLUDED_TOKEN_CREDIT_USD = 10;
